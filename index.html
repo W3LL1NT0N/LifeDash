@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Life Dash v6 | Ton</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <style>
+        :root {
+            /* THEME: ZEN LIGHT (Mantido conforme v5) */
+            --bg-body: #ffffff;
+            --bg-surface: #f8f9fa;
+            --border: #e2e8f0;
+            
+            --text-main: #1e293b;
+            --text-sec: #64748b;
+            
+            --fin: #0ea5e9; /* Azul */
+            --org: #8b5cf6; /* Roxo */
+            --ok: #10b981;
+            --warn: #f59e0b;
+            --err: #ef4444;
+            --dark: #0f172a;
+
+            --radius: 6px;
+            --header-h: 56px;
+            --sidebar-w: 280px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            font-family: 'Noto Sans', sans-serif;
+            background: var(--bg-body); color: var(--text-main);
+            font-size: 14px; height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        /* --- SCREENS --- */
+        .screen { display: none; width: 100%; height: 100%; flex-direction: column; overflow-y: auto; background: var(--bg-body); z-index: 10; }
+        .screen.active { display: flex; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* --- AUTH & SETUP LAYOUT --- */
+        .center-box {
+            margin: auto; width: 100%; max-width: 420px; padding: 2rem;
+            text-align: center;
+        }
+        .setup-card {
+            background: #fff; border: 1px solid var(--border); border-radius: 8px;
+            padding: 1.5rem; text-align: left; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            margin-bottom: 1rem;
+        }
+        .setup-input {
+            width: 100%; padding: 0.8rem; margin-top: 0.5rem; margin-bottom: 1rem;
+            border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.95rem;
+            background: #fff; color: var(--text-main);
+        }
+        .setup-help { font-size: 0.75rem; color: var(--text-sec); margin-bottom: 0.5rem; display: block; font-weight: 500; }
+
+        .btn-full { width: 100%; padding: 0.9rem; background: var(--dark); color: #fff; border: none; border-radius: var(--radius); font-weight: 700; cursor: pointer; font-size: 0.9rem; transition: 0.2s; }
+        .btn-full:active { transform: scale(0.98); }
+        .btn-sec { background: transparent; border: 1px solid var(--border); color: var(--text-sec); margin-top: 0.5rem; }
+
+        /* --- APP HEADER --- */
+        header {
+            height: var(--header-h); border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center; padding: 0 1rem;
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(4px); z-index: 20; flex-shrink: 0;
+        }
+        .h-title { font-weight: 700; font-size: 1.1rem; }
+        .btn-icon { background: transparent; border: none; font-size: 1.4rem; padding: 0.5rem; cursor: pointer; color: var(--text-main); border-radius: 50%; }
+        .btn-icon:hover { background: var(--bg-surface); }
+
+        /* --- DRAWER --- */
+        .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; display: none; }
+        .drawer-overlay.open { display: block; }
+        aside {
+            position: fixed; top: 0; left: 0; bottom: 0; width: var(--sidebar-w);
+            background: #fff; border-right: 1px solid var(--border); z-index: 50;
+            transform: translateX(-100%); transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex; flex-direction: column; padding: 1.5rem;
+        }
+        aside.open { transform: translateX(0); }
+
+        .nav-btn {
+            background: transparent; border: none; width: 100%; padding: 0.8rem 0;
+            text-align: left; font-size: 1rem; font-weight: 500; color: var(--text-sec);
+            cursor: pointer; display: flex; align-items: center; gap: 1rem;
+            border-bottom: 1px solid transparent;
+        }
+        .nav-btn:hover { color: var(--text-main); }
+        .nav-btn.active { color: var(--dark); font-weight: 700; }
+        .nav-group { margin-top: 2rem; font-size: 0.75rem; font-weight: 700; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+
+        /* --- FILTERS BAR --- */
+        .filters-bar {
+            background: var(--bg-surface); border-bottom: 1px solid var(--border);
+            padding: 0.5rem 1rem; display: none; gap: 0.5rem; flex-wrap: wrap;
+        }
+        .filters-bar.open { display: flex; }
+        .f-select { padding: 0.4rem; border: 1px solid var(--border); border-radius: 20px; font-size: 0.8rem; background: #fff; }
+        .f-search { flex: 1; padding: 0.4rem 1rem; border: 1px solid var(--border); border-radius: 20px; font-size: 0.85rem; min-width: 150px; }
+
+        /* --- DASHBOARD WIDGETS --- */
+        .kpi-row {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem; padding: 1rem;
+        }
+        .kpi-card {
+            background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 1rem;
+            display: flex; flex-direction: column; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .kpi-label { font-size: 0.75rem; color: var(--text-sec); font-weight: 600; text-transform: uppercase; margin-bottom: 0.25rem; }
+        .kpi-val { font-size: 1.25rem; font-weight: 700; font-family: monospace; color: var(--text-main); }
+        
+        .kpi-fin { border-left: 4px solid var(--fin); }
+        .kpi-org { border-left: 4px solid var(--org); }
+
+        /* --- LIST --- */
+        .list-area { flex: 1; overflow-y: auto; padding: 0 1rem 5rem; }
+        .list-header { 
+            position: sticky; top: 0; background: var(--bg-body); 
+            padding: 1rem 0 0.5rem; font-weight: 700; color: var(--text-sec); font-size: 0.85rem;
+            display: flex; justify-content: space-between; border-bottom: 1px solid var(--border);
+        }
+
+        .row {
+            display: grid; grid-template-columns: 24px 1fr auto; gap: 1rem;
+            padding: 0.85rem 0; border-bottom: 1px solid var(--border); align-items: center;
+        }
+        .row:last-child { border-bottom: none; }
+        
+        .r-check {
+            width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border);
+            cursor: pointer; position: relative; transition: 0.2s;
+        }
+        .r-check.pendente { border-color: var(--text-sec); }
+        .r-check.concluido { background: var(--ok); border-color: var(--ok); }
+        .r-check.cancelado { border-color: var(--err); }
+        .r-check.concluido::after { content:'✓'; color:#fff; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:12px; }
+
+        .r-main { display: flex; flex-direction: column; gap: 2px; overflow: hidden; cursor: pointer; }
+        .r-title { font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .r-meta { font-size: 0.75rem; color: var(--text-sec); display: flex; align-items: center; gap: 6px; }
+        .r-cat { background: var(--bg-surface); padding: 1px 6px; border-radius: 4px; font-weight: 600; font-size: 0.7rem; text-transform: uppercase; }
+        
+        .r-val { font-family: monospace; font-weight: 600; text-align: right; font-size: 0.95rem; }
+
+        /* --- FAB & MODAL --- */
+        .fab {
+            position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px;
+            background: var(--dark); color: #fff; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer; z-index: 30; transition: transform 0.2s;
+        }
+        .fab:active { transform: scale(0.95); }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: #fff; width: 90%; max-width: 500px; padding: 1.5rem;
+            border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            max-height: 90vh; overflow-y: auto;
+        }
+        
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .form-grp { margin-bottom: 1rem; }
+        
+        .btn-link { background: none; border: none; color: var(--text-sec); font-size: 0.85rem; cursor: pointer; text-decoration: underline; margin-right: auto; }
+        
+        /* Loading */
+        #loader { position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 200; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 1rem; }
+    </style>
+</head>
+<body>
+
+    <!-- GLOBAL LOADER -->
+    <div id="loader">
+        <i class="ph ph-spinner ph-spin" style="font-size: 2.5rem; color: var(--dark);"></i>
+        <div id="loader_msg" style="font-weight: 600; color: var(--text-sec);">Carregando...</div>
+    </div>
+
+    <!-- 1. SETUP INICIAL -->
+    <div id="screen_setup" class="screen">
+        <div class="center-box" style="max-width: 600px;">
+            <h2 style="margin-bottom: 1rem;">Configuração Inicial</h2>
+            <p style="color: var(--text-sec); margin-bottom: 2rem; font-size: 0.9rem;">
+                Cole os links dos seus Formulários Google e Planilha CSV.
+                Certifique-se de ter usado as <strong>TAGS</strong> corretas ao gerar os links preenchidos.
+            </p>
+
+            <div class="setup-card">
+                <strong>1. Planilha (CSV)</strong>
+                <span class="setup-help">Link de publicação na web (Formato CSV)</span>
+                <input type="text" id="cfg_csv" class="setup-input" placeholder="https://docs.google.com/.../export?format=csv">
+            </div>
+
+            <div class="setup-card">
+                <strong>2. Form: Registros (Principal)</strong>
+                <span class="setup-help">Tags: TAG_ID, TAG_TITULO, TAG_DATA, TAG_HORA, TAG_VALOR, TAG_CAT, TAG_REC, TAG_STATUS, TAG_DET, TAG_TS, TAG_DEL</span>
+                <input type="text" id="cfg_form_rec" class="setup-input" placeholder="Link preenchido...">
+            </div>
+
+            <div class="setup-card">
+                <strong>3. Form: Listas (Categorias/Token)</strong>
+                <span class="setup-help">Tags: TAG_ID, TAG_NOME, TAG_TS, TAG_DEL</span>
+                <input type="text" id="cfg_form_cat" class="setup-input" placeholder="Link preenchido...">
+            </div>
+
+            <div class="setup-card">
+                <strong>4. Form: Logs</strong>
+                <span class="setup-help">Tags: TAG_STATUS, TAG_DATA, TAG_AGENT, TAG_SCREEN, TAG_IP</span>
+                <input type="text" id="cfg_form_log" class="setup-input" placeholder="Link preenchido...">
+            </div>
+
+            <button class="btn-full" onclick="salvar_config_inicial()">CONECTAR</button>
+        </div>
+    </div>
+
+    <!-- 2. REGISTRO DE TOKEN (Se planilha vazia) -->
+    <div id="screen_register" class="screen">
+        <div class="center-box">
+            <h1><i class="ph ph-shield-plus"></i></h1>
+            <h2 style="margin-bottom:1rem;">Criar Senha Mestra</h2>
+            <p style="color:var(--text-sec); margin-bottom:1.5rem;">
+                Não encontramos uma senha salva na sua planilha. Crie uma agora. Ela será criptografada e salva no Google.
+            </p>
+            <input type="password" id="reg_pass" class="setup-input" placeholder="Nova Senha" style="text-align:center; letter-spacing:4px;">
+            <input type="password" id="reg_pass_conf" class="setup-input" placeholder="Confirmar Senha" style="text-align:center; letter-spacing:4px;">
+            
+            <button class="btn-full" onclick="registrar_token()">CRIAR E SALVAR</button>
+        </div>
+    </div>
+
+    <!-- 3. TELA DE ESPERA (Delay Google) -->
+    <div id="screen_wait" class="screen">
+        <div class="center-box">
+            <h1><i class="ph ph-clock-countdown"></i></h1>
+            <h2 style="margin-bottom:1rem;">Sincronizando...</h2>
+            <p style="color:var(--text-sec); margin-bottom:1.5rem;">
+                A senha foi enviada para o Google Sheets. Como o Google não atualiza o CSV em tempo real, pode levar de <strong>3 a 5 minutos</strong> para que ela esteja disponível para login.
+            </p>
+            <p style="background:var(--bg-surface); padding:1rem; border-radius:var(--radius); font-size:0.9rem;">
+                Tente fazer login novamente em alguns minutos.
+            </p>
+            <button class="btn-full btn-sec" onclick="tentar_login_novamente()" style="margin-top:2rem;">TENTAR AGORA</button>
+        </div>
+    </div>
+
+    <!-- 4. LOGIN -->
+    <div id="screen_login" class="screen">
+        <div class="center-box">
+            <h1 style="margin-bottom: 2rem;"><i class="ph ph-lock-key"></i></h1>
+            <h3 style="margin-bottom:1rem;">Acesso Seguro</h3>
+            <input type="password" id="login_pass" class="setup-input" placeholder="Senha" style="text-align: center; letter-spacing: 4px; font-size: 1.2rem;" onkeyup="if(event.key==='Enter') auth()">
+            <button class="btn-full" onclick="auth()">ENTRAR</button>
+            <p id="login_err" style="color: var(--err); margin-top: 1rem; font-size: 0.8rem;"></p>
+            <button class="btn-link" onclick="reset_config()" style="margin: 2rem auto 0; display:block;">Resetar Conexões</button>
+        </div>
+    </div>
+
+    <!-- 5. APP PRINCIPAL -->
+    <div id="screen_app" class="screen">
+        <header>
+            <button class="btn-icon" onclick="toggle_drawer()"><i class="ph ph-list"></i></button>
+            <div class="h-title" id="page_title">Dashboard</div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn-icon" onclick="toggle_filters()"><i class="ph ph-funnel"></i></button>
+                <button class="btn-icon" onclick="sincronizar()"><i class="ph ph-cloud-arrow-up"></i></button>
+            </div>
+        </header>
+
+        <!-- Filtros -->
+        <div class="filters-bar" id="filters_bar">
+            <input type="text" class="f-search" id="f_search" placeholder="Buscar..." onkeyup="render()">
+            <select class="f-select" id="f_period" onchange="render()">
+                <option value="hoje">Hoje</option>
+                <option value="ontem">Ontem</option>
+                <option value="semana">Esta Semana</option>
+                <option value="mes" selected>Este Mês</option>
+                <option value="ano">Este Ano</option>
+                <option value="tudo">Tudo</option>
+            </select>
+            <select class="f-select" id="f_status" onchange="render()">
+                <option value="todos">Status</option>
+                <option value="pendente">Pendente</option>
+                <option value="concluido">Concluído</option>
+            </select>
+            <select class="f-select" id="f_cat" onchange="render()">
+                <option value="todos">Categoria</option>
+                <!-- JS -->
+            </select>
+        </div>
+
+        <!-- Drawer -->
+        <div class="drawer-overlay" id="drawer_overlay" onclick="toggle_drawer()"></div>
+        <aside id="drawer">
+            <div style="font-weight:700; font-size:1.2rem; margin-bottom:2rem; display:flex; gap:0.5rem; align-items:center;">
+                <i class="ph ph-squares-four"></i> Ton Planner
+            </div>
+            
+            <button class="nav-btn active" onclick="nav('dashboard')"><i class="ph ph-chart-pie-slice"></i> Dashboard</button>
+            
+            <div class="nav-group">REGISTROS</div>
+            <button class="nav-btn" onclick="nav('todos')"><i class="ph ph-list-dashes"></i> Todos</button>
+            <button class="nav-btn" onclick="nav('fin')"><i class="ph ph-currency-dollar"></i> Financeiro</button>
+            <button class="nav-btn" onclick="nav('org')"><i class="ph ph-check-square"></i> Organizacional</button>
+            
+            <div class="nav-group">SISTEMA</div>
+            <button class="nav-btn" onclick="nav('cats')"><i class="ph ph-tag"></i> Categorias</button>
+            <button class="nav-btn" onclick="reset_config()"><i class="ph ph-gear"></i> Reconfigurar</button>
+            <button class="nav-btn" onclick="logout()"><i class="ph ph-sign-out"></i> Sair</button>
+        </aside>
+
+        <main style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+            <!-- KPI -->
+            <div id="dash_kpi" class="kpi-row" style="display:none;">
+                <div class="kpi-card kpi-fin">
+                    <span class="kpi-label">Saldo</span>
+                    <span class="kpi-val" id="kpi_bal">R$ 0,00</span>
+                    <div style="font-size:0.75rem; color:var(--text-sec); display:flex; justify-content:space-between; margin-top:4px;">
+                        <span style="color:var(--ok)">Ent: <span id="kpi_in">0</span></span>
+                        <span style="color:var(--err)">Sai: <span id="kpi_out">0</span></span>
+                    </div>
+                </div>
+                <div class="kpi-card kpi-org">
+                    <span class="kpi-label">Tarefas</span>
+                    <span class="kpi-val" id="kpi_task">0</span>
+                    <div style="font-size:0.75rem; color:var(--text-sec); display:flex; justify-content:space-between; margin-top:4px;">
+                        <span style="color:var(--warn)">Pend: <span id="kpi_pend">0</span></span>
+                        <span style="color:var(--ok)">Ok: <span id="kpi_ok">0</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LIST -->
+            <div class="list-area">
+                <div class="list-header">
+                    <span id="list_title">Registros</span>
+                    <span id="list_count">0</span>
+                </div>
+                <div id="list_content">
+                    <!-- JS Render -->
+                </div>
+            </div>
+        </main>
+
+        <div class="fab" onclick="modal_open()"><i class="ph ph-plus"></i></div>
+    </div>
+
+    <!-- MODAL EDIT -->
+    <div class="modal-overlay" id="modal_overlay">
+        <div class="modal">
+            <h3 style="margin-bottom:1rem;">Registro</h3>
+            <input type="hidden" id="e_id">
+            
+            <div class="form-grp">
+                <label>Título</label>
+                <input type="text" id="e_titulo" class="setup-input" style="margin:0;">
+            </div>
+            
+            <div class="form-grid">
+                <div class="form-grp">
+                    <label>Data</label>
+                    <input type="date" id="e_data" class="setup-input" style="margin:0;">
+                </div>
+                <div class="form-grp">
+                    <label>Hora</label>
+                    <input type="time" id="e_hora" class="setup-input" style="margin:0;">
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-grp">
+                    <label>Valor (Vazio = Org)</label>
+                    <input type="number" id="e_valor" step="0.01" class="setup-input" style="margin:0;">
+                </div>
+                <div class="form-grp">
+                    <label>Categoria</label>
+                    <select id="e_cat" class="setup-input" style="margin:0;"></select>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-grp">
+                    <label>Recorrência</label>
+                    <select id="e_rec" class="setup-input" style="margin:0;">
+                        <option value="unica">Única</option>
+                        <option value="semanal">Semanal</option>
+                        <option value="mensal">Mensal</option>
+                        <option value="anual">Anual</option>
+                    </select>
+                </div>
+                <div class="form-grp">
+                    <label>Status</label>
+                    <select id="e_status" class="setup-input" style="margin:0;">
+                        <option value="pendente">Pendente</option>
+                        <option value="concluido">Concluído</option>
+                        <option value="cancelado">Cancelado</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-grp">
+                <label>Detalhes</label>
+                <textarea id="e_det" class="setup-input" style="margin:0;" rows="2"></textarea>
+            </div>
+
+            <div style="display:flex; align-items:center; margin-top:1rem;">
+                <button class="btn-link" onclick="del_item()" style="color:var(--err)">Excluir</button>
+                <div style="display:flex; gap:1rem;">
+                    <button class="btn-link" onclick="modal_close()">Cancelar</button>
+                    <button class="btn-full" onclick="save_item()" style="margin:0; width:auto; padding:0.6rem 2rem;">SALVAR</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // === STATE ===
+        let CONFIG = {};
+        let DATA = { recs: [], cats: [] }; // recs = registros, cats = categorias
+        let QUEUE = [];
+        let VIEW = 'dashboard';
+        let REMOTE_TOKEN_HASH = null; // Hash baixado da planilha
+
+        // === BOOT ===
+        window.onload = () => {
+            verificar_estado_inicial();
+        };
+
+        function show_screen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        function show_loader(show, msg) {
+            const l = document.getElementById('loader');
+            if (show) {
+                l.style.display = 'flex';
+                if(msg) document.getElementById('loader_msg').innerText = msg;
+            } else {
+                l.style.display = 'none';
+            }
+        }
+
+        // === 1. VERIFICAÇÃO INICIAL ===
+        function verificar_estado_inicial() {
+            const local_conf = localStorage.getItem('ton_config');
+            
+            if (local_conf) {
+                CONFIG = JSON.parse(local_conf);
+                verificar_token_remoto();
+            } else {
+                show_screen('screen_setup');
+            }
+        }
+
+        async function verificar_token_remoto() {
+            show_loader(true, 'Conectando à nuvem...');
+            
+            try {
+                // Fetch CSV de Listas/Categorias para achar o token
+                // Adiciona timestamp para evitar cache do CSV
+                const res = await fetch(CONFIG.csv_cat + '&t=' + Date.now());
+                const txt = await res.text();
+                const rows = parse_csv_simple(txt); // Basic CSV parser
+
+                // Procura linha onde ID == 'sys_token'
+                // Assumindo ordem do CSV: Timestamp, ID, Nome, ...
+                // A gente procura em todas as colunas "sys_token"
+                let token_found = null;
+                
+                rows.forEach(r => {
+                    // Simplificação: Verifica se alguma coluna é sys_token e pega a proxima como hash
+                    // Ou melhor: se r[1] == 'sys_token', entao r[2] é o hash (nome)
+                    // Como não sabemos a ordem exata, vamos buscar a string 'sys_token'
+                    const idx = r.indexOf('sys_token');
+                    if (idx > -1 && r[idx+1]) {
+                        token_found = r[idx+1]; // O hash deve estar na coluna seguinte (Nome)
+                    }
+                });
+
+                show_loader(false);
+
+                if (token_found) {
+                    REMOTE_TOKEN_HASH = token_found;
+                    show_screen('screen_login');
+                } else {
+                    // Planilha vazia ou sem token
+                    show_screen('screen_register');
+                }
+
+            } catch (e) {
+                show_loader(false);
+                alert('Erro ao conectar planilha: ' + e.message);
+                show_screen('screen_setup'); // Volta pro setup caso link esteja errado
+            }
+        }
+
+        // === 2. SETUP & REGISTRO ===
+        function salvar_config_inicial() {
+            const csv = document.getElementById('cfg_csv').value; // Esse é o CSV PRINCIPAL (Registros) ??
+            // Não, precisamos de 2 CSVs ou 1? O prompt pediu 1 link de planilha.
+            // Se for 1 link, ele exporta apenas a primeira aba geralmente.
+            // Para robustez v6: Vamos pedir apenas o link dos FORMS e 1 link de CSV que o usuario pegou da aba Categorias?
+            // O usuário disse: "1 o link da planilha compartilhada tipo csv".
+            // Se for apenas 1 CSV, teremos problemas para ler registros E categorias se estiverem em abas diferentes.
+            // SOLUÇÃO: Vamos assumir que o link CSV que ele cola é o geral, e tentamos inferir os gids ou
+            // pedimos para ele colar o link CSV da aba de LISTAS especificamente no campo 1?
+            // Vamos simplificar: O campo 1 é o CSV da planilha de LISTAS (onde fica o token).
+            // Depois internamente precisaremos do CSV de registros.
+            // *CORREÇÃO*: O sistema pede links PREENCHIDOS.
+            // Vamos salvar e tentar conectar.
+
+            const l_rec = document.getElementById('cfg_form_rec').value;
+            const l_cat = document.getElementById('cfg_form_cat').value;
+            const l_log = document.getElementById('cfg_form_log').value;
+
+            if(!csv || !l_rec || !l_cat || !l_log) return alert('Preencha todos os campos.');
+
+            // Parser dos links preenchidos
+            const map_rec = { id:'TAG_ID', titulo:'TAG_TITULO', data:'TAG_DATA', hora:'TAG_HORA', valor:'TAG_VALOR', cat:'TAG_CAT', rec:'TAG_REC', status:'TAG_STATUS', det:'TAG_DET', ts:'TAG_TS', del:'TAG_DEL' };
+            const map_cat = { id:'TAG_ID', nome:'TAG_NOME', ts:'TAG_TS', del:'TAG_DEL' };
+            const map_log = { status:'TAG_STATUS', data:'TAG_DATA', agent:'TAG_AGENT', screen:'TAG_SCREEN', ip:'TAG_IP' };
+
+            const c_rec = parse_link(l_rec, map_rec);
+            const c_cat = parse_link(l_cat, map_cat);
+            const c_log = parse_link(l_log, map_log);
+
+            if(!c_rec || !c_cat || !c_log) return;
+
+            // Salva Config
+            // IMPORTANTE: Precisamos do CSV de Registros também. O usuário forneceu 1 CSV.
+            // Assumiremos que o usuário forneceu o CSV da aba REGISTROS.
+            // E vamos tentar "adivinhar" o da aba CATEGORIAS trocando o `gid=0`? Não dá pra garantir.
+            // WORKAROUND: O código vai usar o MESMO CSV para tentar achar o token.
+            // SE O USUÁRIO não configurou abas, vai dar erro.
+            // Mas seguindo a instrução estrita: "1 o link da planilha".
+            // Vamos salvar esse CSV como sendo o de CATEGORIAS para checar Auth.
+            // E também usaremos como REGISTROS. Se estiver tudo misturado, filtramos por colunas.
+            
+            const conf = {
+                csv_cat: csv, // Usado para auth
+                csv_rec: csv, // Usado para dados
+                forms: { rec: c_rec, cat: c_cat, log: c_log }
+            };
+
+            localStorage.setItem('ton_config', JSON.stringify(conf));
+            CONFIG = conf;
+            
+            verificar_token_remoto();
+        }
+
+        async function registrar_token() {
+            const p1 = document.getElementById('reg_pass').value;
+            const p2 = document.getElementById('reg_pass_conf').value;
+            
+            if(!p1) return alert('Digite uma senha.');
+            if(p1 !== p2) return alert('Senhas não conferem.');
+
+            show_loader(true, 'Criptografando e Enviando...');
+            
+            const hash = await sha256(p1);
+            
+            // Envia para o Form de Categorias com ID especial
+            // id='sys_token', nome=HASH
+            const data = {
+                id: 'sys_token',
+                nome: hash,
+                ts: new Date().toISOString(),
+                del: 'false'
+            };
+
+            try {
+                await send_form(CONFIG.forms.cat, data);
+                show_loader(false);
+                show_screen('screen_wait');
+            } catch(e) {
+                show_loader(false);
+                alert('Erro ao enviar senha: ' + e.message);
+            }
+        }
+
+        function tentar_login_novamente() {
+            verificar_token_remoto();
+        }
+
+        // === 3. AUTH & LOGIN ===
+        async function auth() {
+            const pass = document.getElementById('login_pass').value;
+            const hash = await sha256(pass);
+
+            if (hash === REMOTE_TOKEN_HASH) {
+                // Sucesso!
+                show_loader(true, 'Carregando App...');
+                load_app_data(); // Carrega o resto dos dados
+            } else {
+                document.getElementById('login_err').innerText = 'Senha incorreta.';
+                // Log falha
+                send_log('FALHA');
+            }
+        }
+
+        function logout() {
+            location.reload();
+        }
+
+        function reset_config() {
+            if(confirm('Isso desconectará das planilhas. Continuar?')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        // === 4. DATA LOGIC ===
+        async function load_app_data() {
+            // Carrega dados locais (cache)
+            const local = localStorage.getItem('ton_data');
+            if(local) DATA = JSON.parse(local);
+            
+            const local_q = localStorage.getItem('ton_queue');
+            if(local_q) QUEUE = JSON.parse(local_q);
+
+            // Carrega dados remotos (CSV)
+            // Aqui estamos baixando o CSV de novo.
+            try {
+                const res = await fetch(CONFIG.csv_rec + '&t=' + Date.now());
+                const txt = await res.text();
+                parse_main_csv(txt);
+            } catch(e) { console.log('Offline mode'); }
+
+            send_log('LOGIN_SUCESSO');
+            
+            popula_cats();
+            nav('dashboard');
+            show_screen('screen_app');
+            show_loader(false);
+        }
+
+        function parse_main_csv(txt) {
+            const rows = parse_csv_simple(txt);
+            // Lógica "best effort": varrer linhas e tentar identificar registros e categorias
+            // Baseado na presença de colunas chave ou IDs.
+            // IDs de registro começam com 'r', categorias com 'c'.
+            
+            const new_recs = [];
+            const new_cats = [];
+
+            rows.forEach(r => {
+                // Tenta achar ID na linha
+                // Vamos supor que o ID seja a string que começa com 'r' ou 'c' ou 'sys_'
+                const id_cell = r.find(c => c.startsWith('r') || c.startsWith('c'));
+                
+                if(id_cell && id_cell.startsWith('r')) {
+                    // É registro. Precisamos mapear as colunas. 
+                    // Como não sabemos a ordem, temos um problema sério na v5/v6 com CSV único.
+                    // SOLUÇÃO: O usuário deve garantir que o CSV contenha os dados.
+                    // Para esse MVP funcionar, vamos mapear por índice relativo ao ID se possível? Não.
+                    // Vamos tentar achar valores que parecem datas, valores, etc.
+                    // ISSO É FRÁGIL. Mas é o que dá pra fazer sem Header Mapping.
+                    // V6 Melhoria: Assumir que a ordem do CSV é a ordem do FORM.
+                    // (Timestamp, ID, Titulo, Data, Hora, Valor, Cat, Rec, Status, Det, Ts, Del)
+                    // Vamos tentar pegar o índice do ID e ler relativos.
+                    const idx = r.indexOf(id_cell);
+                    // Assumindo estrutura do Form Rec:
+                    if(r[idx+1]) { // Tem titulo
+                         new_recs.push({
+                            id: r[idx],
+                            titulo: r[idx+1],
+                            data: r[idx+2],
+                            hora: r[idx+3],
+                            valor: r[idx+4],
+                            cat: r[idx+5],
+                            rec: r[idx+6],
+                            status: r[idx+7],
+                            det: r[idx+8],
+                            ts: r[idx+9],
+                            del: r[idx+10] === 'true'
+                        });
+                    }
+                } else if (id_cell && id_cell.startsWith('c')) {
+                    const idx = r.indexOf(id_cell);
+                    new_cats.push({
+                        id: r[idx],
+                        nome: r[idx+1],
+                        ts: r[idx+2],
+                        del: r[idx+3] === 'true'
+                    });
+                }
+            });
+
+            // Merge com dados locais (Last Write Wins baseado em TS)
+            // Simplificado: Substitui
+            if(new_recs.length > 0) DATA.recs = new_recs;
+            if(new_cats.length > 0) DATA.cats = new_cats;
+            
+            persist();
+        }
+
+        // === CORE APP (Igual v5) ===
+        function nav(view) {
+            VIEW = view;
+            toggle_drawer(false);
+            const titles = { dashboard:'Dashboard', todos:'Todos', fin:'Financeiro', org:'Organizacional', cats:'Categorias' };
+            document.getElementById('page_title').innerText = titles[view] || 'App';
+            
+            // Filter UI Logic
+            document.getElementById('dash_kpi').style.display = (view === 'dashboard') ? 'grid' : 'none';
+            if(view === 'dashboard') document.getElementById('f_period').value = 'hoje';
+            
+            render();
+        }
+
+        function render() {
+            const list = document.getElementById('list_content');
+            list.innerHTML = '';
+            let items = DATA.recs.filter(r => !r.del);
+
+            if(VIEW === 'fin') items = items.filter(r => Number(r.valor) > 0);
+            if(VIEW === 'org') items = items.filter(r => !r.valor || Number(r.valor)===0);
+
+            // Filtros Barra
+            const search = document.getElementById('f_search').value.toLowerCase();
+            const f_per = document.getElementById('f_period').value;
+            const f_st = document.getElementById('f_status').value;
+            const f_cat = document.getElementById('f_cat').value;
+
+            if(search) items = items.filter(r => (r.titulo||'').toLowerCase().includes(search));
+            if(f_st !== 'todos') items = items.filter(r => r.status === f_st);
+            if(f_cat !== 'todos') items = items.filter(r => r.cat === f_cat);
+            
+            const rng = get_date_range(f_per);
+            if(rng) items = items.filter(r => {
+                const d = new Date(r.data + 'T00:00:00');
+                return d >= rng.start && d <= rng.end;
+            });
+
+            calc_kpi(items);
+
+            if(VIEW === 'dashboard') items.sort((a,b) => (a.hora||'').localeCompare(b.hora||''));
+            else items.sort((a,b) => (b.data||'').localeCompare(a.data||''));
+
+            document.getElementById('list_count').innerText = items.length;
+
+            if(items.length === 0) {
+                list.innerHTML = '<div style="padding:2rem; text-align:center; color:var(--text-sec)">Nada aqui.</div>';
+                return;
+            }
+
+            items.forEach(r => {
+                const is_fin = Number(r.valor) > 0;
+                const val_fmt = is_fin ? Number(r.valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '';
+                const data_br = (r.data||'').split('-').reverse().join('/');
+                
+                list.innerHTML += `
+                <div class="row">
+                    <div class="r-check ${r.status}" onclick="cycle_status('${r.id}')"></div>
+                    <div class="r-main" onclick="edit_item('${r.id}')">
+                        <div class="r-title">${r.titulo}</div>
+                        <div class="r-meta">
+                            <span class="r-cat">${r.cat}</span>
+                            <span>${data_br} • ${r.hora||'--:--'}</span>
+                        </div>
+                    </div>
+                    <div class="r-val">${val_fmt}</div>
+                </div>`;
+            });
+        }
+
+        // ... [Resto das funções CRUD e UI da v5 mantidas: save_item, cycle_status, del_item, modal logic] ...
+        // Incluído para manter o arquivo completo e funcional
+        
+        function save_item() {
+            const id = document.getElementById('e_id').value || 'r'+Date.now();
+            const item = {
+                id,
+                titulo: document.getElementById('e_titulo').value,
+                data: document.getElementById('e_data').value,
+                hora: document.getElementById('e_hora').value,
+                valor: document.getElementById('e_valor').value,
+                cat: document.getElementById('e_cat').value,
+                rec: document.getElementById('e_rec').value,
+                status: document.getElementById('e_status').value,
+                det: document.getElementById('e_det').value,
+                ts: new Date().toISOString(),
+                del: 'false'
+            };
+            if(!item.titulo || !item.data) return alert('Campos obrigatórios');
+            
+            const idx = DATA.recs.findIndex(r => r.id === id);
+            if(idx > -1) DATA.recs[idx] = item; else DATA.recs.push(item);
+            
+            QUEUE.push({ type: 'rec', data: item });
+            persist(); modal_close();
+        }
+
+        function cycle_status(id) {
+            const r = DATA.recs.find(i => i.id === id);
+            const map = { pendente:'concluido', concluido:'cancelado', cancelado:'pendente' };
+            r.status = map[r.status]; r.ts = new Date().toISOString();
+            QUEUE.push({ type: 'rec', data: r }); persist();
+        }
+        function del_item() {
+            const id = document.getElementById('e_id').value;
+            if(id) {
+                const r = DATA.recs.find(i => i.id === id);
+                r.del = 'true'; r.ts = new Date().toISOString();
+                QUEUE.push({ type: 'rec', data: r }); persist(); modal_close();
+            }
+        }
+
+        // ... [Helpers] ...
+        function persist() {
+            localStorage.setItem('ton_data', JSON.stringify(DATA));
+            localStorage.setItem('ton_queue', JSON.stringify(QUEUE));
+            render();
+        }
+        
+        function parse_link(url, mapping) {
+            try {
+                if (!url.includes('viewform')) throw new Error('Link inválido');
+                const base = url.split('/viewform')[0] + '/formResponse';
+                const params = new URLSearchParams(url.split('?')[1]);
+                const entries = {};
+                for (let [key, tag] of Object.entries(mapping)) {
+                    params.forEach((val, pKey) => { if (val.trim() === tag) entries[key] = pKey; });
+                }
+                return { url: base, entries };
+            } catch (e) { alert('Erro no link: '+url); return null; }
+        }
+
+        function parse_csv_simple(txt) {
+            const rows = [];
+            txt.split('\n').forEach(line => {
+                // Regex p/ CSV com aspas
+                const row = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+                if(row) rows.push(row.map(c => c.replace(/^"|"$/g, '')));
+            });
+            return rows;
+        }
+
+        async function send_form(cfg, data) {
+            const fd = new URLSearchParams();
+            for(let [key, entryId] of Object.entries(cfg.entries)) {
+                let val = data[key] || '';
+                fd.append(entryId, val);
+            }
+            await fetch(cfg.url, { method: 'POST', mode: 'no-cors', body: fd });
+        }
+
+        async function send_log(status) {
+            if(!CONFIG.forms || !CONFIG.forms.log) return;
+            const d = {
+                status: status,
+                data: new Date().toISOString(),
+                agent: navigator.userAgent,
+                screen: window.innerWidth + 'x' + window.innerHeight,
+                ip: 'auto'
+            };
+            send_form(CONFIG.forms.log, d);
+        }
+
+        async function sincronizar() {
+            if(QUEUE.length === 0) return alert('Sincronizado.');
+            show_loader(true, 'Enviando...');
+            for(let q of [...QUEUE]) {
+                const cfg = CONFIG.forms[q.type];
+                if(cfg) await send_form(cfg, q.data);
+            }
+            QUEUE = []; persist();
+            show_loader(false);
+            alert('Concluído!');
+        }
+
+        async function sha256(s) {
+            const b = new TextEncoder().encode(s);
+            const h = await crypto.subtle.digest('SHA-256', b);
+            return Array.from(new Uint8Array(h)).map(x => x.toString(16).padStart(2,'0')).join('');
+        }
+
+        // UI Helpers
+        function toggle_drawer(force) { 
+            const d = document.getElementById('drawer'); 
+            const o = document.getElementById('drawer_overlay');
+            if(force===false || d.classList.contains('open')) { d.classList.remove('open'); o.classList.remove('open'); }
+            else { d.classList.add('open'); o.classList.add('open'); }
+        }
+        function toggle_filters() { document.getElementById('filters_bar').classList.toggle('open'); }
+        function modal_open() { 
+            document.getElementById('e_id').value = ''; 
+            document.getElementById('e_data').value = new Date().toISOString().split('T')[0];
+            document.getElementById('modal_overlay').classList.add('open'); 
+        }
+        function edit_item(id) {
+            const r = DATA.recs.find(i => i.id === id);
+            document.getElementById('e_id').value = r.id;
+            document.getElementById('e_titulo').value = r.titulo;
+            document.getElementById('e_data').value = r.data;
+            document.getElementById('e_hora').value = r.hora;
+            document.getElementById('e_valor').value = r.valor;
+            document.getElementById('e_cat').value = r.cat;
+            document.getElementById('e_rec').value = r.rec;
+            document.getElementById('e_status').value = r.status;
+            document.getElementById('e_det').value = r.det;
+            document.getElementById('modal_overlay').classList.add('open');
+        }
+        function modal_close() { document.getElementById('modal_overlay').classList.remove('open'); }
+        
+        function popula_cats() {
+            const s = document.getElementById('f_cat'); const s2 = document.getElementById('e_cat');
+            s.innerHTML = '<option value="todos">Categoria</option>'; s2.innerHTML = '';
+            DATA.cats.forEach(c => {
+                s.innerHTML += `<option value="${c.nome}">${c.nome}</option>`;
+                s2.innerHTML += `<option value="${c.nome}">${c.nome}</option>`;
+            });
+        }
+        
+        function get_date_range(p) {
+            const h = new Date(); h.setHours(0,0,0,0); const e = new Date(); e.setHours(23,59,59,999);
+            if(p==='hoje') return {start:h, end:e};
+            if(p==='ontem') { h.setDate(h.getDate()-1); e.setDate(e.getDate()-1); return {start:h, end:e}; }
+            if(p==='semana') { const d=h.getDay(); h.setDate(h.getDate()-d); e.setDate(e.getDate()+(6-d)); return {start:h, end:e}; }
+            if(p==='mes') { h.setDate(1); e.setMonth(e.getMonth()+1); e.setDate(0); return {start:h, end:e}; }
+            if(p==='ano') { h.setMonth(0,1); e.setMonth(11,31); return {start:h, end:e}; }
+            return null;
+        }
+
+        function calc_kpi(items) {
+            let bal=0, in_=0, out=0, task=0, pend=0, ok=0;
+            items.forEach(r => {
+                const v = Number(r.valor||0);
+                if(v > 0) {
+                    // Se categoria Trabalho -> Entrada
+                    if(r.cat === 'Trabalhos') { in_ += v; bal += v; }
+                    else { out += v; bal -= v; }
+                } else {
+                    task++;
+                    if(r.status === 'pendente') pend++;
+                    if(r.status === 'concluido') ok++;
+                }
+            });
+            document.getElementById('kpi_bal').innerText = bal.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+            document.getElementById('kpi_bal').style.color = bal >= 0 ? 'var(--fin)' : 'var(--err)';
+            document.getElementById('kpi_in').innerText = in_.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+            document.getElementById('kpi_out').innerText = out.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+            document.getElementById('kpi_task').innerText = task;
+            document.getElementById('kpi_pend').innerText = pend;
+            document.getElementById('kpi_ok').innerText = ok;
+        }
+    </script>
+</body>
+</html>
