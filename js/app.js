@@ -1,101 +1,91 @@
-// --- APLICAÇÃO PRINCIPAL (DASHBOARD) ---
+// --- APLICAÇÃO PRINCIPAL ---
 
-let DATA = { recs: [], cats: [] };
+let DATA = { recs: [], cats: [], logs: [] };
 let QUEUE = [];
 let VIEW = 'dashboard';
 let CONFIG_APP = {};
+let USER_PREFS = { week_start: 0 }; // 0 Dom, 1 Seg
 
 window.onload = function() {
-    // Verifica Sessão
     const local_conf = localStorage.getItem('ton_config');
     const local_sessao = localStorage.getItem('ton_sessao');
+    const local_prefs = localStorage.getItem('ton_prefs');
     
-    if(!local_conf || !local_sessao) {
-        window.location.href = 'index.html';
-        return;
-    }
+    if(!local_conf || !local_sessao) { window.location.href = 'index.html'; return; }
     
     CONFIG_APP = JSON.parse(local_conf);
+    if(local_prefs) USER_PREFS = JSON.parse(local_prefs);
+    
     show_loader(true, 'Sincronizando...');
     load_data();
 };
 
 async function load_data() {
-    // 1. Carrega Cache Local
-    const local_d = localStorage.getItem('ton_data');
-    const local_q = localStorage.getItem('ton_queue');
-    if(local_d) DATA = JSON.parse(local_d);
-    if(local_q) QUEUE = JSON.parse(local_q);
+    // 1. Local Cache
+    const d = localStorage.getItem('ton_data');
+    const q = localStorage.getItem('ton_queue');
+    if(d) DATA = JSON.parse(d);
+    if(q) QUEUE = JSON.parse(q);
 
-    // 2. Download CSVs (Registros E Categorias)
+    // 2. Remote CSVs (Recs, Cats, Logs)
     try {
-        const p1 = fetch(CONFIG_APP.csvs.rec + '&t=' + Date.now()).then(r => r.text());
-        const p2 = fetch(CONFIG_APP.csvs.cat + '&t=' + Date.now()).then(r => r.text());
+        const p1 = fetch(CONFIG_APP.csvs.rec + '&t=' + Date.now()).then(r=>r.text());
+        const p2 = fetch(CONFIG_APP.csvs.cat + '&t=' + Date.now()).then(r=>r.text());
+        const p3 = fetch(CONFIG_APP.csvs.log + '&t=' + Date.now()).then(r=>r.text());
         
-        const [txtRec, txtCat] = await Promise.all([p1, p2]);
-        
-        process_csv_data(txtRec, txtCat);
-        
-    } catch(e) { 
-        console.log('Modo Offline ou Erro Sync:', e); 
-    }
+        const [txtRec, txtCat, txtLog] = await Promise.all([p1, p2, p3]);
+        process_csvs(txtRec, txtCat, txtLog);
+    } catch(e) { console.log('Offline/Erro CSV', e); }
 
-    // Seed de segurança (se nunca baixou nada)
-    if(DATA.cats.length === 0) {
-        ['Trabalhos','Projetos','Estudos','Hobbyes','Esportes','Saúde','Família'].forEach(c => 
-            DATA.cats.push({id:'c'+Math.random(), nome:c})
-        );
+    // Seed Cats
+    if(!DATA.cats || DATA.cats.length===0) {
+        DATA.cats = [];
+        ['Trabalhos','Projetos','Estudos','Hobbyes','Esportes','Saúde','Família'].forEach(c=>DATA.cats.push({id:'c'+Math.random(),nome:c, del:'false'}));
     }
 
     nav('dashboard');
     show_loader(false);
 }
 
-function process_csv_data(txtRec, txtCat) {
-    const rowsRec = parse_csv_simple(txtRec);
-    const rowsCat = parse_csv_simple(txtCat);
+function process_csvs(rec, cat, log) {
+    const rRec = parse_csv_simple(rec);
+    const rCat = parse_csv_simple(cat);
+    const rLog = parse_csv_simple(log);
     
     const new_recs = [];
     const new_cats = [];
+    const new_logs = [];
 
-    // Processa Registros (Busca ID que começa com 'r' seguido de numero)
-    rowsRec.forEach(r => {
-        // Regex estrito para evitar falsos positivos
-        const idIdx = r.findIndex(cell => /^r\d+/.test(cell));
-        
-        if(idIdx > -1 && r[idIdx+1]) { // Se achou ID e tem Título
+    // Recs (ID starts with 'r')
+    rRec.forEach(r => {
+        const i = r.findIndex(c => /^r\d+/.test(c));
+        if(i > -1 && r[i+1]) {
             new_recs.push({
-                id: r[idIdx],
-                titulo: r[idIdx+1],
-                data: r[idIdx+2],
-                hora: r[idIdx+3],
-                valor: r[idIdx+4],
-                cat: r[idIdx+5],
-                rec: r[idIdx+6],
-                status: r[idIdx+7],
-                det: r[idIdx+8],
-                ts: r[idIdx+9],
-                del: r[idIdx+10]
+                id:r[i], titulo:r[i+1], data:r[i+2], hora:r[i+3], valor:r[i+4], 
+                cat:r[i+5], rec:r[i+6], status:r[i+7], det:r[i+8], ts:r[i+9], del:r[i+10]
             });
         }
     });
 
-    // Processa Categorias (Busca ID que começa com 'c' seguido de numero)
-    rowsCat.forEach(r => {
-        const idIdx = r.findIndex(cell => /^c\d+/.test(cell));
-        if(idIdx > -1 && r[idIdx+1]) {
-            new_cats.push({
-                id: r[idIdx],
-                nome: r[idIdx+1],
-                ts: r[idIdx+2],
-                del: r[idIdx+3]
-            });
+    // Cats (ID starts with 'c' or 'sys')
+    rCat.forEach(r => {
+        const i = r.findIndex(c => /^[cs]\d+|sys_/.test(c));
+        if(i > -1 && r[i+1]) {
+            new_cats.push({ id:r[i], nome:r[i+1], ts:r[i+2], del:r[i+3] });
         }
     });
 
-    // Merge: Se baixou dados novos, atualiza.
-    if(new_recs.length > 0) DATA.recs = new_recs;
-    if(new_cats.length > 0) DATA.cats = new_cats;
+    // Logs (Auto ID or Timestamp first) - Logs CSV usually: TS, Status, Data, Agent...
+    // Assuming CSV mapping matches form order.
+    rLog.forEach(r => {
+        if(r.length >= 4) {
+            new_logs.push({ ts:r[0], status:r[1], data:r[2], agent:r[3] });
+        }
+    });
+
+    if(new_recs.length) DATA.recs = new_recs;
+    if(new_cats.length) DATA.cats = new_cats;
+    if(new_logs.length) DATA.logs = new_logs.reverse(); // Newest first
     
     persist();
 }
@@ -103,291 +93,282 @@ function process_csv_data(txtRec, txtCat) {
 function persist() {
     localStorage.setItem('ton_data', JSON.stringify(DATA));
     localStorage.setItem('ton_queue', JSON.stringify(QUEUE));
+    localStorage.setItem('ton_prefs', JSON.stringify(USER_PREFS));
     render();
 }
 
-// --- NAVEGAÇÃO & UI ---
+// --- NAVEGAÇÃO ---
 function nav(view) {
     VIEW = view;
     toggle_drawer(false);
     
-    const titulos = { 
-        dashboard: 'Dashboard', 
-        todos: 'Todos', 
-        fin: 'Financeiro', 
-        org: 'Organizacional', 
-        cats: 'Categorias' 
-    };
-    document.getElementById('page_title').innerText = titulos[view] || 'App';
+    const titles = { dashboard:'Dashboard', todos:'Todos', fin:'Financeiro', org:'Organizacional', config:'Configurações', logs:'Logs do Sistema' };
+    document.getElementById('page_title').innerText = titles[view] || 'App';
     
-    // Toggle KPI
-    document.getElementById('dash_kpi').style.display = (view === 'dashboard') ? 'grid' : 'none';
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     
-    // Filtros Padrão
-    if(view === 'dashboard') document.getElementById('f_period').value = 'hoje';
-    
-    render();
+    // Route Logic
+    if(view === 'config') {
+        document.getElementById('screen_config').classList.add('active');
+        render_config();
+    } else if (view === 'logs') {
+        document.getElementById('screen_logs').classList.add('active');
+        render_logs();
+    } else {
+        document.getElementById('screen_home').classList.add('active');
+        // Toggle KPI
+        document.getElementById('dash_kpi').style.display = (view === 'dashboard') ? 'grid' : 'none';
+        // Reset Filter
+        if(view === 'dashboard') document.getElementById('f_period').value = 'hoje';
+        render();
+    }
 }
 
+// --- RENDER HOME ---
 function render() {
     const list = document.getElementById('list_content');
     list.innerHTML = '';
-
-    // Filtra deletados ('true' string ou bool)
+    
     let items = DATA.recs.filter(r => String(r.del) !== 'true');
 
-    // Filtro Contexto
     if(VIEW === 'fin') items = items.filter(r => Number(r.valor) > 0);
     if(VIEW === 'org') items = items.filter(r => !r.valor || Number(r.valor) === 0);
 
-    // Filtros Barra
+    // Filters
     const search = document.getElementById('f_search').value.toLowerCase();
-    const f_per = document.getElementById('f_period').value;
     const f_st = document.getElementById('f_status').value;
     const f_cat = document.getElementById('f_cat').value;
+    const f_per = document.getElementById('f_period').value;
 
-    if(search) items = items.filter(r => (r.titulo || '').toLowerCase().includes(search));
+    if(search) items = items.filter(r => r.titulo.toLowerCase().includes(search));
     if(f_st !== 'todos') items = items.filter(r => r.status === f_st);
     if(f_cat !== 'todos') items = items.filter(r => r.cat === f_cat);
 
-    const rng = get_date_range(f_per);
+    const rng = get_date_range(f_per, USER_PREFS.week_start);
     if(rng) items = items.filter(r => {
         if(!r.data) return false;
         const d = new Date(r.data + 'T00:00:00');
         return d >= rng.start && d <= rng.end;
     });
 
-    // Ordenação
-    if(VIEW === 'dashboard') {
-        items.sort((a,b) => (a.hora||'').localeCompare(b.hora||''));
-    } else {
-        items.sort((a,b) => (b.data||'').localeCompare(a.data||''));
-    }
+    // Sort
+    if(VIEW === 'dashboard') items.sort((a,b) => (a.hora||'').localeCompare(b.hora||''));
+    else items.sort((a,b) => (b.data||'').localeCompare(a.data||''));
 
     calc_kpi(items);
     document.getElementById('list_count').innerText = items.length;
 
-    if(items.length === 0) {
-        list.innerHTML = '<div style="padding:3rem; text-align:center; color:var(--text-sec);">Nada encontrado.</div>';
-        return;
-    }
+    if(items.length === 0) { list.innerHTML = '<div style="padding:3rem;text-align:center;color:var(--text-sec)">Nada.</div>'; return; }
 
     items.forEach(r => {
-        const valNum = Number(r.valor);
-        const is_fin = valNum > 0;
-        const valFmt = is_fin ? valNum.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '';
-        
-        // Data BR
-        const dataArr = (r.data || '').split('-');
-        const dataBr = dataArr.length === 3 ? `${dataArr[2]}/${dataArr[1]}` : '--/--';
+        const val = Number(r.valor);
+        const is_fin = val > 0;
+        const vFmt = is_fin ? val.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '';
+        const dArr = (r.data||'').split('-');
+        const dBr = dArr.length===3 ? `${dArr[2]}/${dArr[1]}` : '--';
+        const stClass = r.status === 'concluido' ? 'concluido' : '';
 
         list.innerHTML += `
-        <div class="row">
-            <div class="r-check ${r.status}" onclick="cycle_status('${r.id}')"></div>
-            <div class="r-main" onclick="edit_item('${r.id}')">
+        <div class="row" onclick="edit_item('${r.id}')">
+            <div class="r-check ${stClass}" onclick="event.stopPropagation(); toggle_check('${r.id}')"></div>
+            <div class="r-main">
                 <div class="r-title">${r.titulo}</div>
-                <div class="r-meta">
-                    <span class="r-cat">${r.cat}</span>
-                    <span>${dataBr} • ${r.hora || '--:--'}</span>
-                </div>
+                <div class="r-meta"><span class="r-cat">${r.cat}</span> <span>${dBr} • ${r.hora||'--'}</span></div>
             </div>
-            <div class="r-val" style="${is_fin ? 'color:var(--text-main)' : 'color:var(--text-sec)'}">${valFmt}</div>
+            <div class="r-val" style="color:${is_fin?'var(--text-main)':'var(--text-sec)'}">${vFmt}</div>
         </div>`;
     });
 }
 
 function calc_kpi(items) {
     let bal=0, in_=0, out=0, task=0, pend=0, ok=0;
-    
     items.forEach(r => {
-        const v = Number(r.valor || 0);
+        const v = Number(r.valor||0);
         if(v > 0) {
-            // Lógica Simplificada: Se categoria for 'Trabalhos', é entrada. Resto é saída.
-            // Para maior precisão, pode-se usar sinal negativo no valor input se for saída.
-            // Mas seguindo o padrão do Ton:
-            if(r.cat === 'Trabalhos' || r.cat === 'Receitas') { 
-                in_ += v; 
-                bal += v; 
-            } else { 
-                out += v; 
-                bal -= v; 
-            }
+            if(r.cat === 'Trabalhos' || r.cat === 'Receitas') { in_+=v; bal+=v; }
+            else { out+=v; bal-=v; }
         } else {
             task++;
-            if(r.status === 'pendente') pend++;
-            if(r.status === 'concluido') ok++;
+            if(r.status==='pendente') pend++; else ok++;
         }
     });
-
     document.getElementById('kpi_bal').innerText = bal.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-    document.getElementById('kpi_bal').style.color = bal >= 0 ? 'var(--fin)' : 'var(--err)';
     document.getElementById('kpi_in').innerText = in_.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
     document.getElementById('kpi_out').innerText = out.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-    
-    document.getElementById('kpi_task').innerText = task;
-    document.getElementById('kpi_pend').innerText = pend;
+    document.getElementById('kpi_task').innerText = task; 
+    document.getElementById('kpi_pend').innerText = pend; 
     document.getElementById('kpi_ok').innerText = ok;
 }
 
-// --- HELPERS DE DATA ---
-function get_date_range(p) {
-    const h = new Date(); h.setHours(0,0,0,0);
-    const e = new Date(); e.setHours(23,59,59,999);
+// --- CONFIG & LOGS RENDER ---
+function render_config() {
+    const list = document.getElementById('conf_cat_list');
+    list.innerHTML = '';
+    const cats = DATA.cats.filter(c => String(c.del) !== 'true' && c.id !== 'sys_token');
     
-    if(p === 'hoje') return {start:h, end:e};
-    if(p === 'ontem') { 
-        h.setDate(h.getDate()-1); e.setDate(e.getDate()-1); 
-        return {start:h, end:e}; 
-    }
-    if(p === 'mes') { 
-        h.setDate(1); 
-        e.setMonth(e.getMonth()+1); e.setDate(0); 
-        return {start:h, end:e}; 
-    }
-    if(p === 'tudo') return {start: new Date('2000-01-01'), end: new Date('2100-01-01')};
-    
-    // Default fallback
-    return {start:h, end:e};
+    cats.forEach(c => {
+        list.innerHTML += `
+        <div class="cat-item">
+            <span>${c.nome}</span>
+            <button onclick="del_cat('${c.id}')"><i class="ph ph-trash"></i></button>
+        </div>`;
+    });
+
+    // Week Start Radio
+    document.getElementById('ws_dom').checked = (USER_PREFS.week_start === 0);
+    document.getElementById('ws_seg').checked = (USER_PREFS.week_start === 1);
 }
 
-// --- CRUD ---
+function render_logs() {
+    const list = document.getElementById('log_list');
+    list.innerHTML = '';
+    DATA.logs.slice(0, 50).forEach(l => {
+        const cls = l.status.includes('SUCESSO') ? 'log-ok' : 'log-fail';
+        list.innerHTML += `
+        <div class="log-row">
+            <div class="log-time">${l.data.replace('T',' ').split('.')[0]}</div>
+            <div class="log-status ${cls}">${l.status}</div>
+            <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${l.agent}</div>
+        </div>`;
+    });
+}
+
+// --- CRUD ACTIONS ---
 function save_item() {
+    // Validar form
+    const titulo = document.getElementById('e_titulo').value;
+    const data = document.getElementById('e_data').value;
+    if(!titulo || !data) return alert('Título e Data obrigatórios.');
+
     const id = document.getElementById('e_id').value || 'r' + Date.now();
+    const stVal = document.getElementById('e_status').checked ? 'concluido' : 'pendente';
+
     const item = {
         id: id,
-        titulo: document.getElementById('e_titulo').value,
-        data: document.getElementById('e_data').value,
+        titulo: titulo,
+        data: data,
         hora: document.getElementById('e_hora').value,
         valor: document.getElementById('e_valor').value,
         cat: document.getElementById('e_cat').value,
         rec: document.getElementById('e_rec').value,
-        status: document.getElementById('e_status').value,
+        status: stVal,
         det: document.getElementById('e_det').value,
         ts: new Date().toISOString(),
         del: 'false'
     };
 
-    if(!item.titulo || !item.data) return alert('Preencha Título e Data');
-
-    // Update Local
+    // Salvar Local
     const idx = DATA.recs.findIndex(r => r.id === id);
     if(idx > -1) DATA.recs[idx] = item;
     else DATA.recs.push(item);
 
-    // Add to Queue
+    // Fila Sync
     QUEUE.push({ type: 'rec', data: item });
     
     persist();
     modal_close();
 }
 
-function cycle_status(id) {
+function toggle_check(id) {
     const r = DATA.recs.find(i => i.id === id);
     if(!r) return;
-    
-    const map = { pendente:'concluido', concluido:'cancelado', cancelado:'pendente' };
-    r.status = map[r.status];
+    r.status = (r.status === 'concluido' ? 'pendente' : 'concluido');
     r.ts = new Date().toISOString();
-    
     QUEUE.push({ type: 'rec', data: r });
     persist();
 }
 
-function del_item() {
+function del_item_modal() {
     const id = document.getElementById('e_id').value;
     if(id) {
         const r = DATA.recs.find(i => i.id === id);
-        if(r) {
-            r.del = 'true';
-            r.ts = new Date().toISOString();
-            QUEUE.push({ type: 'rec', data: r });
-            persist();
-            modal_close();
-        }
+        if(r) { r.del = 'true'; r.ts = new Date().toISOString(); QUEUE.push({ type: 'rec', data: r }); }
+        persist();
     }
+    modal_close();
+}
+
+// --- CONFIG ACTIONS ---
+function add_cat() {
+    const nome = document.getElementById('new_cat_name').value;
+    if(!nome) return;
+    const item = { id:'c'+Date.now(), nome:nome, ts:new Date().toISOString(), del:'false' };
+    DATA.cats.push(item);
+    QUEUE.push({ type:'cat', data:item });
+    document.getElementById('new_cat_name').value = '';
+    persist();
+    render_config();
+}
+
+function del_cat(id) {
+    const c = DATA.cats.find(i => i.id === id);
+    if(c) { c.del = 'true'; QUEUE.push({ type:'cat', data:c }); persist(); render_config(); }
+}
+
+function save_pref_ws(val) {
+    USER_PREFS.week_start = val;
+    persist();
 }
 
 // --- SYNC ---
 async function sincronizar() {
-    if(QUEUE.length === 0) return alert('Tudo sincronizado.');
-    
-    show_loader(true, `Enviando ${QUEUE.length} itens...`);
-    
-    // Processa fila
+    if(QUEUE.length === 0) return alert('Tudo em dia.');
+    show_loader(true, `Enviando ${QUEUE.length}...`);
     const failed = [];
     for(let q of QUEUE) {
-        try {
-            await send_form(CONFIG_APP.forms[q.type], q.data);
-        } catch(e) {
-            failed.push(q);
-        }
+        try { await send_form(CONFIG_APP.forms[q.type], q.data); } 
+        catch(e) { failed.push(q); }
     }
-    
-    QUEUE = failed;
-    persist();
-    show_loader(false);
-    
-    if(failed.length > 0) alert(`Erro ao enviar ${failed.length} itens.`);
-    else alert('Sincronização concluída!');
+    QUEUE = failed; persist(); show_loader(false);
+    if(failed.length) alert('Alguns erros.'); else alert('Sucesso!');
 }
 
-function logout() {
-    localStorage.removeItem('ton_sessao');
-    window.location.href = 'index.html';
-}
+function logout() { localStorage.removeItem('ton_sessao'); window.location.href='index.html'; }
 
-// --- MODAIS & DRAWER ---
-function toggle_drawer(force) { 
-    const d=document.getElementById('drawer'); const o=document.getElementById('drawer_overlay'); 
-    if(force===false || d.classList.contains('open')){ d.classList.remove('open'); o.classList.remove('open'); }
-    else { d.classList.add('open'); o.classList.add('open'); } 
-}
+// --- UI HELPERS ---
+function toggle_drawer(f){ const d=document.getElementById('drawer'); const o=document.getElementById('drawer_overlay'); if(f===false||d.classList.contains('open')){d.classList.remove('open');o.classList.remove('open');}else{d.classList.add('open');o.classList.add('open');} }
 function toggle_filters(){ document.getElementById('filters_bar').classList.toggle('open'); }
 
-function modal_open(){ 
-    document.getElementById('e_id').value=''; 
-    document.getElementById('e_data').value=new Date().toISOString().split('T')[0];
-    document.getElementById('e_hora').value='';
-    document.getElementById('e_titulo').value='';
-    document.getElementById('e_valor').value='';
-    document.getElementById('e_det').value='';
-    populate_cats(); 
-    document.getElementById('modal_overlay').classList.add('open'); 
+function modal_open() {
+    document.getElementById('e_id').value = '';
+    document.getElementById('e_data').value = new Date().toISOString().split('T')[0];
+    document.getElementById('e_titulo').value = '';
+    document.getElementById('e_valor').value = '';
+    document.getElementById('e_hora').value = '';
+    document.getElementById('e_det').value = '';
+    document.getElementById('e_status').checked = false;
+    pop_cats_modal();
+    document.getElementById('modal_overlay').classList.add('open');
 }
 
-function edit_item(id){ 
-    const r=DATA.recs.find(i=>i.id===id); 
-    document.getElementById('e_id').value=r.id; 
-    document.getElementById('e_titulo').value=r.titulo; 
-    document.getElementById('e_data').value=r.data; 
-    document.getElementById('e_hora').value=r.hora; 
-    document.getElementById('e_valor').value=r.valor; 
-    populate_cats(); 
-    document.getElementById('e_cat').value=r.cat; 
-    document.getElementById('e_status').value=r.status; 
-    document.getElementById('e_det').value=r.det;
-    document.getElementById('modal_overlay').classList.add('open'); 
+function edit_item(id) {
+    const r = DATA.recs.find(i => i.id === id);
+    if(!r) return;
+    document.getElementById('e_id').value = r.id;
+    document.getElementById('e_titulo').value = r.titulo;
+    document.getElementById('e_data').value = r.data;
+    document.getElementById('e_hora').value = r.hora;
+    document.getElementById('e_valor').value = r.valor;
+    document.getElementById('e_det').value = r.det;
+    pop_cats_modal();
+    document.getElementById('e_cat').value = r.cat;
+    document.getElementById('e_status').checked = (r.status === 'concluido');
+    document.getElementById('modal_overlay').classList.add('open');
 }
 
-function modal_close(){ document.getElementById('modal_overlay').classList.remove('open'); }
+function modal_close() { document.getElementById('modal_overlay').classList.remove('open'); }
 
-function populate_cats(){ 
-    const s = document.getElementById('e_cat'); 
+function pop_cats_modal() {
+    const s = document.getElementById('e_cat');
     const f = document.getElementById('f_cat');
+    const cur = f.value;
+    s.innerHTML = ''; f.innerHTML = '<option value="todos">Categoria</option>';
     
-    // Salva seleção atual do filtro para não resetar
-    const currentFilter = f.value;
-    
-    s.innerHTML = '';
-    f.innerHTML = '<option value="todos">Categoria</option>';
-    
-    // Remove duplicatas e deletados
-    const uniqueCats = [...new Set(DATA.cats.filter(c => String(c.del) !== 'true').map(c => c.nome))];
-    
-    uniqueCats.forEach(name => { 
-        s.innerHTML += `<option value="${name}">${name}</option>`; 
-        f.innerHTML += `<option value="${name}">${name}</option>`; 
+    // Unique & Active
+    const u = [...new Set(DATA.cats.filter(c=>String(c.del)!=='true' && c.id!=='sys_token').map(c=>c.nome))];
+    u.forEach(n => {
+        s.innerHTML += `<option>${n}</option>`;
+        f.innerHTML += `<option>${n}</option>`;
     });
-    
-    f.value = currentFilter;
+    f.value = cur;
 }

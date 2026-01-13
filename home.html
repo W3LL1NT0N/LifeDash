@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Life Dash v6.2 | Dashboard</title>
+    <title>Life Dash v6.3 | Home</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -20,13 +20,34 @@
         </div>
     </header>
 
+    <!-- BARRA DE FILTROS -->
     <div class="filters-bar" id="filters_bar">
         <input type="text" class="f-search" id="f_search" placeholder="Buscar..." onkeyup="render()">
-        <select class="f-select" id="f_period" onchange="render()"><option value="hoje">Hoje</option><option value="ontem">Ontem</option><option value="mes" selected>Este Mês</option><option value="tudo">Tudo</option></select>
-        <select class="f-select" id="f_status" onchange="render()"><option value="todos">Status</option><option value="pendente">Pendente</option></select>
-        <select class="f-select" id="f_cat" onchange="render()"><option value="todos">Categoria</option></select>
+        <select class="f-select" id="f_period" onchange="render()">
+            <option value="hoje">Hoje</option>
+            <option value="ontem">Ontem</option>
+            <option value="amanha">Amanhã</option>
+            <option value="semana_atual">Esta Semana</option>
+            <option value="semana_passada">Semana Passada</option>
+            <option value="semana_vem">Semana Que Vem</option>
+            <option value="mes_atual">Este Mês</option>
+            <option value="mes_passado">Mês Passado</option>
+            <option value="mes_vem">Mês Que Vem</option>
+            <option value="ano_atual">Este Ano</option>
+            <option value="ano_passado">Ano Passado</option>
+            <option value="tudo">Tudo</option>
+        </select>
+        <select class="f-select" id="f_status" onchange="render()">
+            <option value="todos">Status</option>
+            <option value="pendente">Pendente</option>
+            <option value="concluido">Concluído</option>
+        </select>
+        <select class="f-select" id="f_cat" onchange="render()">
+            <option value="todos">Categoria</option>
+        </select>
     </div>
 
+    <!-- MENU LATERAL -->
     <div class="drawer-overlay" id="drawer_overlay" onclick="toggle_drawer()"></div>
     <aside id="drawer">
         <div style="font-weight:700; font-size:1.2rem; margin-bottom:2rem; display:flex; gap:0.5rem; align-items:center;">
@@ -38,55 +59,128 @@
         <button class="nav-btn" onclick="nav('fin')"><i class="ph ph-currency-dollar"></i> Financeiro</button>
         <button class="nav-btn" onclick="nav('org')"><i class="ph ph-check-square"></i> Organizacional</button>
         <div class="nav-group">SISTEMA</div>
+        <button class="nav-btn" onclick="nav('config')"><i class="ph ph-gear"></i> Configurações</button>
+        <button class="nav-btn" onclick="nav('logs')"><i class="ph ph-scroll"></i> Logs</button>
         <button class="nav-btn" onclick="logout()"><i class="ph ph-sign-out"></i> Sair</button>
     </aside>
 
-    <main style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
-        <div id="dash_kpi" class="kpi-row" style="display:none;">
+    <!-- SCREEN 1: HOME (List & KPI) -->
+    <div id="screen_home" class="screen active">
+        <div id="dash_kpi" class="kpi-row">
             <div class="kpi-card kpi-fin">
                 <span class="kpi-label">Saldo</span><span class="kpi-val" id="kpi_bal">R$ 0,00</span>
-                <div style="font-size:0.75rem; color:var(--text-sec); display:flex; justify-content:space-between; margin-top:4px;">
+                <div style="font-size:0.75rem; color:var(--text-sec); display:flex; justify-content:space-between;">
                     <span style="color:var(--ok)">Ent: <span id="kpi_in">0</span></span><span style="color:var(--err)">Sai: <span id="kpi_out">0</span></span>
                 </div>
             </div>
             <div class="kpi-card kpi-org">
                 <span class="kpi-label">Tarefas</span><span class="kpi-val" id="kpi_task">0</span>
-                <div style="font-size:0.75rem; color:var(--text-sec); display:flex; justify-content:space-between; margin-top:4px;">
+                <div style="font-size:0.75rem; color:var(--text-sec); display:flex; justify-content:space-between;">
                     <span style="color:var(--warn)">Pend: <span id="kpi_pend">0</span></span><span style="color:var(--ok)">Ok: <span id="kpi_ok">0</span></span>
                 </div>
             </div>
         </div>
         <div class="list-area">
-            <div class="list-header"><span id="list_title">Registros</span><span id="list_count">0</span></div>
+            <div class="section-title"><span>Registros</span><span id="list_count">0</span></div>
             <div id="list_content"></div>
         </div>
-    </main>
-    <div class="fab" onclick="modal_open()"><i class="ph ph-plus"></i></div>
+        <div class="fab" onclick="modal_open()"><i class="ph ph-plus"></i></div>
+    </div>
 
-    <!-- MODAL -->
+    <!-- SCREEN 2: CONFIG (Lists & Prefs) -->
+    <div id="screen_config" class="screen">
+        <div class="list-area" style="padding-bottom:1rem;">
+            <div class="section-title">Preferências</div>
+            <div class="kpi-card" style="margin-bottom:1.5rem;">
+                <span class="form-grp label" style="margin-bottom:0.5rem; display:block;">Início da Semana</span>
+                <div style="display:flex; gap:1rem;">
+                    <label><input type="radio" name="ws" id="ws_dom" onclick="save_pref_ws(0)"> Domingo</label>
+                    <label><input type="radio" name="ws" id="ws_seg" onclick="save_pref_ws(1)"> Segunda</label>
+                </div>
+            </div>
+
+            <div class="section-title">Categorias</div>
+            <div class="form-grid" style="grid-template-columns: 1fr auto; margin-bottom:1rem;">
+                <input type="text" id="new_cat_name" placeholder="Nova Categoria..." class="f-select" style="border-radius:8px;">
+                <button class="btn btn-primary" onclick="add_cat()">Adicionar</button>
+            </div>
+            <div id="conf_cat_list"></div>
+        </div>
+    </div>
+
+    <!-- SCREEN 3: LOGS -->
+    <div id="screen_logs" class="screen">
+        <div class="list-area">
+            <div id="log_list"></div>
+        </div>
+    </div>
+
+    <!-- MODAL EDIT/CREATE -->
     <div class="modal-overlay" id="modal_overlay">
         <div class="modal">
-            <h3 style="margin-bottom:1rem;">Registro</h3>
-            <input type="hidden" id="e_id">
-            <div class="form-grp"><label>Título</label><input type="text" id="e_titulo" class="setup-input" style="margin:0;"></div>
-            <div class="form-grid">
-                <div class="form-grp"><label>Data</label><input type="date" id="e_data" class="setup-input" style="margin:0;"></div>
-                <div class="form-grp"><label>Hora</label><input type="time" id="e_hora" class="setup-input" style="margin:0;"></div>
+            <div class="modal-header">
+                <span class="modal-title">Detalhes</span>
+                <button class="btn-icon" onclick="modal_close()" style="font-size:1.2rem;"><i class="ph ph-x"></i></button>
             </div>
-            <div class="form-grid">
-                <div class="form-grp"><label>Valor</label><input type="number" id="e_valor" step="0.01" class="setup-input" style="margin:0;"></div>
-                <div class="form-grp"><label>Categoria</label><select id="e_cat" class="setup-input" style="margin:0;"></select></div>
-            </div>
-            <div class="form-grid">
-                <div class="form-grp"><label>Status</label><select id="e_status" class="setup-input" style="margin:0;"><option value="pendente">Pendente</option><option value="concluido">Concluído</option></select></div>
-            </div>
-            <div class="form-grp"><label>Detalhes</label><textarea id="e_det" class="setup-input" style="margin:0;" rows="2"></textarea></div>
-            <div style="display:flex; align-items:center; margin-top:1rem;">
-                <button class="btn-link" onclick="del_item()" style="color:var(--err)">Excluir</button>
-                <div style="display:flex; gap:1rem;">
-                    <button class="btn-link" onclick="modal_close()">Cancelar</button>
-                    <button class="btn-full" onclick="save_item()" style="margin:0; width:auto; padding:0.6rem 2rem;">SALVAR</button>
+            
+            <div class="modal-body">
+                <input type="hidden" id="e_id">
+                
+                <div class="form-grp">
+                    <label>Título</label>
+                    <input type="text" id="e_titulo" placeholder="O que é?">
                 </div>
+
+                <div class="form-grid">
+                    <div class="form-grp">
+                        <label>Data</label>
+                        <input type="date" id="e_data">
+                    </div>
+                    <div class="form-grp">
+                        <label>Hora</label>
+                        <input type="time" id="e_hora">
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-grp">
+                        <label>Valor (Vazio=Org)</label>
+                        <input type="number" id="e_valor" step="0.01" placeholder="0.00">
+                    </div>
+                    <div class="form-grp">
+                        <label>Categoria</label>
+                        <select id="e_cat"></select>
+                    </div>
+                </div>
+
+                <div class="form-grid" style="align-items:center;">
+                    <div class="form-grp">
+                        <label>Recorrência</label>
+                        <select id="e_rec">
+                            <option value="unica">Única</option>
+                            <option value="semanal">Semanal</option>
+                            <option value="mensal">Mensal</option>
+                            <option value="anual">Anual</option>
+                        </select>
+                    </div>
+                    <div class="form-grp">
+                        <label>Status (Concluído)</label>
+                        <label class="switch">
+                            <input type="checkbox" id="e_status">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-grp">
+                    <label>Detalhes</label>
+                    <textarea id="e_det" rows="3" placeholder="Informações extra..."></textarea>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="save_item()">SALVAR</button>
+                <button class="btn btn-danger" onclick="del_item_modal()">EXCLUIR</button>
             </div>
         </div>
     </div>
