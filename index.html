@@ -555,7 +555,7 @@
             document.getElementById('kpi_task').innerText = task; document.getElementById('kpi_pend').innerText = pend; document.getElementById('kpi_ok').innerText = ok;
         }
 
-        // C.R.U.D.
+        // CRUD
         function toggle_drawer(f){ const d=document.getElementById('drawer'); const o=document.getElementById('drawer_overlay'); if(f===false||d.classList.contains('open')){d.classList.remove('open');o.classList.remove('open');}else{d.classList.add('open');o.classList.add('open');} }
         function toggle_filters(){ document.getElementById('filters_bar').classList.toggle('open'); }
         function modal_open(){ document.getElementById('e_id').value=''; document.getElementById('e_data').value=new Date().toISOString().split('T')[0]; document.getElementById('modal_overlay').classList.add('open'); populate_cats(); }
