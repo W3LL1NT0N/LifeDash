@@ -7,40 +7,79 @@ let CONFIG_APP = {};
 let USER_PREFS = { week_start: 0 }; // 0 Dom, 1 Seg
 
 window.onload = function() {
-    const local_conf = localStorage.getItem('ton_config');
-    const local_sessao = localStorage.getItem('ton_sessao');
-    const local_prefs = localStorage.getItem('ton_prefs');
-    
-    if(!local_conf || !local_sessao) { window.location.href = 'index.html'; return; }
-    
-    CONFIG_APP = JSON.parse(local_conf);
-    if(local_prefs) USER_PREFS = JSON.parse(local_prefs);
-    
-    show_loader(true, 'Sincronizando...');
-    load_data();
+    try {
+        const local_conf = localStorage.getItem('ton_config');
+        const local_sessao = localStorage.getItem('ton_sessao');
+        const local_prefs = localStorage.getItem('ton_prefs');
+        
+        // 1. Verificação de Sessão
+        if(!local_conf || !local_sessao) { 
+            window.location.href = 'index.html'; 
+            return; 
+        }
+        
+        CONFIG_APP = JSON.parse(local_conf);
+        
+        // 2. Verificação de Compatibilidade (Correção da Tela Branca)
+        if (!CONFIG_APP.csvs || !CONFIG_APP.csvs.rec) {
+            alert("A estrutura do sistema mudou. Por favor, reconfigure as conexões.");
+            localStorage.removeItem('ton_config');
+            window.location.href = 'index.html';
+            return;
+        }
+
+        if(local_prefs) USER_PREFS = JSON.parse(local_prefs);
+        
+        show_loader(true, 'Sincronizando...');
+        load_data();
+
+    } catch (err) {
+        console.error(err);
+        alert("Erro crítico ao iniciar: " + err.message);
+        // Opcional: Resetar se estiver muito quebrado
+        // localStorage.clear(); window.location.reload();
+    }
 };
 
 async function load_data() {
     // 1. Local Cache
     const d = localStorage.getItem('ton_data');
     const q = localStorage.getItem('ton_queue');
-    if(d) DATA = JSON.parse(d);
+    
+    if(d) {
+        try {
+            DATA = JSON.parse(d);
+            // Garante que logs existe mesmo em cache antigo
+            if(!DATA.logs) DATA.logs = [];
+            if(!DATA.recs) DATA.recs = [];
+            if(!DATA.cats) DATA.cats = [];
+        } catch(e) {
+            DATA = { recs: [], cats: [], logs: [] };
+        }
+    }
+    
     if(q) QUEUE = JSON.parse(q);
 
-    // 2. Remote CSVs (Recs, Cats, Logs)
+    // 2. Remote CSVs
     try {
-        const p1 = fetch(CONFIG_APP.csvs.rec + '&t=' + Date.now()).then(r=>r.text());
-        const p2 = fetch(CONFIG_APP.csvs.cat + '&t=' + Date.now()).then(r=>r.text());
-        const p3 = fetch(CONFIG_APP.csvs.log + '&t=' + Date.now()).then(r=>r.text());
+        const timestamp = Date.now();
+        // Downloads paralelos
+        const p1 = fetch(CONFIG_APP.csvs.rec + '&t=' + timestamp).then(r => r.text());
+        const p2 = fetch(CONFIG_APP.csvs.cat + '&t=' + timestamp).then(r => r.text());
+        const p3 = fetch(CONFIG_APP.csvs.log + '&t=' + timestamp).then(r => r.text());
         
         const [txtRec, txtCat, txtLog] = await Promise.all([p1, p2, p3]);
         process_csvs(txtRec, txtCat, txtLog);
-    } catch(e) { console.log('Offline/Erro CSV', e); }
+    } catch(e) { 
+        console.log('Modo Offline ou Erro CSV:', e); 
+    }
 
-    // Seed Cats
-    if(!DATA.cats || DATA.cats.length===0) {
+    // Seed Cats se vazio
+    if(!DATA.cats || DATA.cats.length === 0) {
         DATA.cats = [];
-        ['Trabalhos','Projetos','Estudos','Hobbyes','Esportes','Saúde','Família'].forEach(c=>DATA.cats.push({id:'c'+Math.random(),nome:c, del:'false'}));
+        ['Trabalhos','Projetos','Estudos','Hobbyes','Esportes','Saúde','Família'].forEach(c => 
+            DATA.cats.push({id:'c'+Math.random(), nome:c, del:'false'})
+        );
     }
 
     nav('dashboard');
@@ -56,7 +95,7 @@ function process_csvs(rec, cat, log) {
     const new_cats = [];
     const new_logs = [];
 
-    // Recs (ID starts with 'r')
+    // Recs
     rRec.forEach(r => {
         const i = r.findIndex(c => /^r\d+/.test(c));
         if(i > -1 && r[i+1]) {
@@ -67,7 +106,7 @@ function process_csvs(rec, cat, log) {
         }
     });
 
-    // Cats (ID starts with 'c' or 'sys')
+    // Cats
     rCat.forEach(r => {
         const i = r.findIndex(c => /^[cs]\d+|sys_/.test(c));
         if(i > -1 && r[i+1]) {
@@ -75,17 +114,17 @@ function process_csvs(rec, cat, log) {
         }
     });
 
-    // Logs (Auto ID or Timestamp first) - Logs CSV usually: TS, Status, Data, Agent...
-    // Assuming CSV mapping matches form order.
+    // Logs
     rLog.forEach(r => {
+        // Assume log structure based on content length or tag presence if possible
         if(r.length >= 4) {
             new_logs.push({ ts:r[0], status:r[1], data:r[2], agent:r[3] });
         }
     });
 
-    if(new_recs.length) DATA.recs = new_recs;
-    if(new_cats.length) DATA.cats = new_cats;
-    if(new_logs.length) DATA.logs = new_logs.reverse(); // Newest first
+    if(new_recs.length > 0) DATA.recs = new_recs;
+    if(new_cats.length > 0) DATA.cats = new_cats;
+    if(new_logs.length > 0) DATA.logs = new_logs.reverse();
     
     persist();
 }
@@ -103,50 +142,66 @@ function nav(view) {
     toggle_drawer(false);
     
     const titles = { dashboard:'Dashboard', todos:'Todos', fin:'Financeiro', org:'Organizacional', config:'Configurações', logs:'Logs do Sistema' };
-    document.getElementById('page_title').innerText = titles[view] || 'App';
+    const elTitle = document.getElementById('page_title');
+    if(elTitle) elTitle.innerText = titles[view] || 'App';
     
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     
-    // Route Logic
     if(view === 'config') {
-        document.getElementById('screen_config').classList.add('active');
-        render_config();
+        const el = document.getElementById('screen_config');
+        if(el) { el.classList.add('active'); render_config(); }
     } else if (view === 'logs') {
-        document.getElementById('screen_logs').classList.add('active');
-        render_logs();
+        const el = document.getElementById('screen_logs');
+        if(el) { el.classList.add('active'); render_logs(); }
     } else {
-        document.getElementById('screen_home').classList.add('active');
-        // Toggle KPI
-        document.getElementById('dash_kpi').style.display = (view === 'dashboard') ? 'grid' : 'none';
-        // Reset Filter
-        if(view === 'dashboard') document.getElementById('f_period').value = 'hoje';
-        render();
+        const el = document.getElementById('screen_home');
+        if(el) {
+            el.classList.add('active');
+            const kpi = document.getElementById('dash_kpi');
+            if(kpi) kpi.style.display = (view === 'dashboard') ? 'grid' : 'none';
+            
+            // Reset filter on dashboard entry
+            if(view === 'dashboard') {
+                const fp = document.getElementById('f_period');
+                if(fp) fp.value = 'hoje';
+            }
+            render();
+        }
     }
 }
 
-// --- RENDER HOME ---
+// --- RENDER ---
 function render() {
     const list = document.getElementById('list_content');
+    if(!list) return;
     list.innerHTML = '';
     
+    if(!DATA.recs) DATA.recs = [];
     let items = DATA.recs.filter(r => String(r.del) !== 'true');
 
+    // Context Filters
     if(VIEW === 'fin') items = items.filter(r => Number(r.valor) > 0);
     if(VIEW === 'org') items = items.filter(r => !r.valor || Number(r.valor) === 0);
 
-    // Filters
-    const search = document.getElementById('f_search').value.toLowerCase();
-    const f_st = document.getElementById('f_status').value;
-    const f_cat = document.getElementById('f_cat').value;
-    const f_per = document.getElementById('f_period').value;
+    // Bar Filters
+    const elSearch = document.getElementById('f_search');
+    const elSt = document.getElementById('f_status');
+    const elCat = document.getElementById('f_cat');
+    const elPer = document.getElementById('f_period');
 
-    if(search) items = items.filter(r => r.titulo.toLowerCase().includes(search));
+    const search = elSearch ? elSearch.value.toLowerCase() : '';
+    const f_st = elSt ? elSt.value : 'todos';
+    const f_cat = elCat ? elCat.value : 'todos';
+    const f_per = elPer ? elPer.value : 'tudo';
+
+    if(search) items = items.filter(r => (r.titulo || '').toLowerCase().includes(search));
     if(f_st !== 'todos') items = items.filter(r => r.status === f_st);
     if(f_cat !== 'todos') items = items.filter(r => r.cat === f_cat);
 
     const rng = get_date_range(f_per, USER_PREFS.week_start);
     if(rng) items = items.filter(r => {
         if(!r.data) return false;
+        // Fix timezone issue by appending time
         const d = new Date(r.data + 'T00:00:00');
         return d >= rng.start && d <= rng.end;
     });
@@ -156,7 +211,9 @@ function render() {
     else items.sort((a,b) => (b.data||'').localeCompare(a.data||''));
 
     calc_kpi(items);
-    document.getElementById('list_count').innerText = items.length;
+    
+    const elCount = document.getElementById('list_count');
+    if(elCount) elCount.innerText = items.length;
 
     if(items.length === 0) { list.innerHTML = '<div style="padding:3rem;text-align:center;color:var(--text-sec)">Nada.</div>'; return; }
 
@@ -164,8 +221,10 @@ function render() {
         const val = Number(r.valor);
         const is_fin = val > 0;
         const vFmt = is_fin ? val.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '';
+        
         const dArr = (r.data||'').split('-');
         const dBr = dArr.length===3 ? `${dArr[2]}/${dArr[1]}` : '--';
+        
         const stClass = r.status === 'concluido' ? 'concluido' : '';
 
         list.innerHTML += `
@@ -173,7 +232,10 @@ function render() {
             <div class="r-check ${stClass}" onclick="event.stopPropagation(); toggle_check('${r.id}')"></div>
             <div class="r-main">
                 <div class="r-title">${r.titulo}</div>
-                <div class="r-meta"><span class="r-cat">${r.cat}</span> <span>${dBr} • ${r.hora||'--'}</span></div>
+                <div class="r-meta">
+                    <span class="r-cat">${r.cat}</span>
+                    <span>${dBr} • ${r.hora||'--'}</span>
+                </div>
             </div>
             <div class="r-val" style="color:${is_fin?'var(--text-main)':'var(--text-sec)'}">${vFmt}</div>
         </div>`;
@@ -192,18 +254,23 @@ function calc_kpi(items) {
             if(r.status==='pendente') pend++; else ok++;
         }
     });
-    document.getElementById('kpi_bal').innerText = bal.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-    document.getElementById('kpi_in').innerText = in_.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-    document.getElementById('kpi_out').innerText = out.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-    document.getElementById('kpi_task').innerText = task; 
-    document.getElementById('kpi_pend').innerText = pend; 
-    document.getElementById('kpi_ok').innerText = ok;
+    
+    const setTxt = (id, txt) => { const el = document.getElementById(id); if(el) el.innerText = txt; };
+    
+    setTxt('kpi_bal', bal.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}));
+    setTxt('kpi_in', in_.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}));
+    setTxt('kpi_out', out.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}));
+    setTxt('kpi_task', task);
+    setTxt('kpi_pend', pend);
+    setTxt('kpi_ok', ok);
 }
 
-// --- CONFIG & LOGS RENDER ---
+// --- RENDER CONFIG & LOGS ---
 function render_config() {
     const list = document.getElementById('conf_cat_list');
+    if(!list) return;
     list.innerHTML = '';
+    
     const cats = DATA.cats.filter(c => String(c.del) !== 'true' && c.id !== 'sys_token');
     
     cats.forEach(c => {
@@ -214,34 +281,43 @@ function render_config() {
         </div>`;
     });
 
-    // Week Start Radio
-    document.getElementById('ws_dom').checked = (USER_PREFS.week_start === 0);
-    document.getElementById('ws_seg').checked = (USER_PREFS.week_start === 1);
+    const rdDom = document.getElementById('ws_dom');
+    const rdSeg = document.getElementById('ws_seg');
+    if(rdDom) rdDom.checked = (USER_PREFS.week_start === 0);
+    if(rdSeg) rdSeg.checked = (USER_PREFS.week_start === 1);
 }
 
 function render_logs() {
     const list = document.getElementById('log_list');
+    if(!list) return;
     list.innerHTML = '';
+    
+    // Safety check if logs undefined
+    if(!DATA.logs) DATA.logs = [];
+    
     DATA.logs.slice(0, 50).forEach(l => {
-        const cls = l.status.includes('SUCESSO') ? 'log-ok' : 'log-fail';
+        const statusText = l.status || '';
+        const cls = statusText.includes('SUCESSO') ? 'log-ok' : 'log-fail';
+        const dateStr = l.data ? l.data.replace('T',' ').split('.')[0] : '--';
+        
         list.innerHTML += `
         <div class="log-row">
-            <div class="log-time">${l.data.replace('T',' ').split('.')[0]}</div>
-            <div class="log-status ${cls}">${l.status}</div>
-            <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${l.agent}</div>
+            <div class="log-time">${dateStr}</div>
+            <div class="log-status ${cls}">${statusText}</div>
+            <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${l.agent || '-'}</div>
         </div>`;
     });
 }
 
 // --- CRUD ACTIONS ---
 function save_item() {
-    // Validar form
     const titulo = document.getElementById('e_titulo').value;
     const data = document.getElementById('e_data').value;
     if(!titulo || !data) return alert('Título e Data obrigatórios.');
 
     const id = document.getElementById('e_id').value || 'r' + Date.now();
-    const stVal = document.getElementById('e_status').checked ? 'concluido' : 'pendente';
+    const isChecked = document.getElementById('e_status').checked;
+    const stVal = isChecked ? 'concluido' : 'pendente';
 
     const item = {
         id: id,
@@ -257,14 +333,11 @@ function save_item() {
         del: 'false'
     };
 
-    // Salvar Local
     const idx = DATA.recs.findIndex(r => r.id === id);
     if(idx > -1) DATA.recs[idx] = item;
     else DATA.recs.push(item);
 
-    // Fila Sync
     QUEUE.push({ type: 'rec', data: item });
-    
     persist();
     modal_close();
 }
@@ -288,14 +361,15 @@ function del_item_modal() {
     modal_close();
 }
 
-// --- CONFIG ACTIONS ---
+// CONFIG ACTIONS
 function add_cat() {
-    const nome = document.getElementById('new_cat_name').value;
+    const el = document.getElementById('new_cat_name');
+    const nome = el.value;
     if(!nome) return;
     const item = { id:'c'+Date.now(), nome:nome, ts:new Date().toISOString(), del:'false' };
     DATA.cats.push(item);
     QUEUE.push({ type:'cat', data:item });
-    document.getElementById('new_cat_name').value = '';
+    el.value = '';
     persist();
     render_config();
 }
@@ -310,22 +384,26 @@ function save_pref_ws(val) {
     persist();
 }
 
-// --- SYNC ---
+// SYNC & UTILS
 async function sincronizar() {
     if(QUEUE.length === 0) return alert('Tudo em dia.');
     show_loader(true, `Enviando ${QUEUE.length}...`);
     const failed = [];
     for(let q of QUEUE) {
-        try { await send_form(CONFIG_APP.forms[q.type], q.data); } 
+        try { 
+            // Check if config exists for type
+            if(CONFIG_APP.forms && CONFIG_APP.forms[q.type]) {
+                await send_form(CONFIG_APP.forms[q.type], q.data); 
+            }
+        } 
         catch(e) { failed.push(q); }
     }
     QUEUE = failed; persist(); show_loader(false);
-    if(failed.length) alert('Alguns erros.'); else alert('Sucesso!');
+    if(failed.length) alert('Erro ao enviar alguns itens.'); else alert('Sucesso!');
 }
 
 function logout() { localStorage.removeItem('ton_sessao'); window.location.href='index.html'; }
 
-// --- UI HELPERS ---
 function toggle_drawer(f){ const d=document.getElementById('drawer'); const o=document.getElementById('drawer_overlay'); if(f===false||d.classList.contains('open')){d.classList.remove('open');o.classList.remove('open');}else{d.classList.add('open');o.classList.add('open');} }
 function toggle_filters(){ document.getElementById('filters_bar').classList.toggle('open'); }
 
@@ -361,14 +439,15 @@ function modal_close() { document.getElementById('modal_overlay').classList.remo
 function pop_cats_modal() {
     const s = document.getElementById('e_cat');
     const f = document.getElementById('f_cat');
-    const cur = f.value;
-    s.innerHTML = ''; f.innerHTML = '<option value="todos">Categoria</option>';
+    const cur = f ? f.value : 'todos';
     
-    // Unique & Active
+    if(s) s.innerHTML = ''; 
+    if(f) f.innerHTML = '<option value="todos">Categoria</option>';
+    
     const u = [...new Set(DATA.cats.filter(c=>String(c.del)!=='true' && c.id!=='sys_token').map(c=>c.nome))];
     u.forEach(n => {
-        s.innerHTML += `<option>${n}</option>`;
-        f.innerHTML += `<option>${n}</option>`;
+        if(s) s.innerHTML += `<option>${n}</option>`;
+        if(f) f.innerHTML += `<option>${n}</option>`;
     });
-    f.value = cur;
+    if(f) f.value = cur;
 }
