@@ -3,216 +3,195 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Life Dash v6.1 | Ton</title>
+    <title>Life Dash v6.2 | Ton</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <style>
         :root {
             /* THEME: ZEN LIGHT */
-            --bg-body: #ffffff;
-            --bg-surface: #f8f9fa;
-            --border: #e2e8f0;
-            --text-main: #1e293b;
-            --text-sec: #64748b;
-            --fin: #0ea5e9; --org: #8b5cf6;
-            --ok: #10b981; --warn: #f59e0b; --err: #ef4444; --dark: #0f172a;
+            --bg-body: #ffffff; --bg-surface: #f8f9fa; --border: #e2e8f0;
+            --text-main: #1e293b; --text-sec: #64748b;
+            --fin: #0ea5e9; --org: #8b5cf6; --ok: #10b981; --warn: #f59e0b; --err: #ef4444; --dark: #0f172a;
             --radius: 6px; --header-h: 56px; --sidebar-w: 280px;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
-        
-        body {
-            font-family: 'Noto Sans', sans-serif; background: var(--bg-body); color: var(--text-main);
-            font-size: 14px; height: 100vh; display: flex; flex-direction: column; overflow: hidden;
-        }
+        body { font-family: 'Noto Sans', sans-serif; background: var(--bg-body); color: var(--text-main); font-size: 14px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
         /* SCREENS */
         .screen { display: none; width: 100%; height: 100%; flex-direction: column; overflow-y: auto; background: var(--bg-body); z-index: 10; }
         .screen.active { display: flex; animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        /* AUTH LAYOUT */
-        .center-box { margin: auto; width: 100%; max-width: 450px; padding: 2rem; text-align: center; }
+        /* SETUP LAYOUT */
+        .center-box { margin: auto; width: 100%; max-width: 600px; padding: 2rem; text-align: center; }
+        .setup-block { 
+            background: #fff; border: 1px solid var(--border); border-radius: 8px; 
+            padding: 1.5rem; text-align: left; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 2rem; 
+        }
+        .block-title { font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; color: var(--dark); }
+        .block-desc { font-size: 0.85rem; color: var(--text-sec); margin-bottom: 1rem; line-height: 1.4; }
         
-        .setup-card {
-            background: #fff; border: 1px solid var(--border); border-radius: 8px;
-            padding: 1.5rem; text-align: left; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 1rem;
-        }
-        .setup-input {
-            width: 100%; padding: 0.8rem; margin-top: 0.5rem; margin-bottom: 1rem;
-            border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.95rem;
-            background: #fff; color: var(--text-main);
-        }
-        .setup-help { font-size: 0.75rem; color: var(--text-sec); margin-bottom: 0.5rem; display: block; font-weight: 500; }
+        .field-label { font-size: 0.75rem; font-weight: 700; color: var(--text-sec); text-transform: uppercase; margin-top: 1rem; display: block; }
+        .setup-input { width: 100%; padding: 0.8rem; margin-top: 0.3rem; border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.95rem; background: #fff; color: var(--text-main); }
+        .tag-list { font-family: monospace; font-size: 0.75rem; background: var(--bg-surface); padding: 0.5rem; border-radius: 4px; color: var(--fin); word-break: break-all; margin-top: 0.5rem; display: block; }
 
         .btn-full { width: 100%; padding: 0.9rem; background: var(--dark); color: #fff; border: none; border-radius: var(--radius); font-weight: 700; cursor: pointer; font-size: 0.9rem; transition: 0.2s; }
-        .btn-full:active { transform: scale(0.98); }
-        .btn-full:disabled { background: var(--text-sec); cursor: not-allowed; opacity: 0.7; }
-        .btn-link { background: none; border: none; color: var(--text-sec); font-size: 0.85rem; cursor: pointer; text-decoration: underline; margin-right: auto; }
+        .btn-link { background: none; border: none; color: var(--text-sec); font-size: 0.85rem; cursor: pointer; text-decoration: underline; margin-top: 1rem; }
 
-        /* CHECKLIST DIAGNOSTICS */
+        /* DIAGNOSTICS */
         .diag-list { text-align: left; margin-top: 1.5rem; background: var(--bg-surface); padding: 1rem; border-radius: var(--radius); border: 1px solid var(--border); }
         .diag-item { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.8rem; font-size: 0.9rem; color: var(--text-main); }
-        .diag-item:last-child { margin-bottom: 0; }
         .d-icon { font-size: 1.2rem; display: flex; align-items: center; }
-        .d-pend { color: var(--text-sec); }
         .d-load { color: var(--fin); animation: spin 1s linear infinite; }
-        .d-ok { color: var(--ok); }
-        .d-err { color: var(--err); }
+        .d-ok { color: var(--ok); } .d-err { color: var(--err); }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        /* APP HEADER & DRAWER (Mantidos v6) */
+        /* APP STYLES (Mantidos) */
         header { height: var(--header-h); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; padding: 0 1rem; background: rgba(255,255,255,0.95); backdrop-filter: blur(4px); z-index: 20; flex-shrink: 0; }
         .h-title { font-weight: 700; font-size: 1.1rem; }
         .btn-icon { background: transparent; border: none; font-size: 1.4rem; padding: 0.5rem; cursor: pointer; color: var(--text-main); border-radius: 50%; }
-        .btn-icon:hover { background: var(--bg-surface); }
-
+        
+        aside { position: fixed; top: 0; left: 0; bottom: 0; width: var(--sidebar-w); background: #fff; border-right: 1px solid var(--border); z-index: 50; transform: translateX(-100%); transition: transform 0.25s ease; display: flex; flex-direction: column; padding: 1.5rem; }
+        aside.open { transform: translateX(0); }
         .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; display: none; }
         .drawer-overlay.open { display: block; }
-        aside { position: fixed; top: 0; left: 0; bottom: 0; width: var(--sidebar-w); background: #fff; border-right: 1px solid var(--border); z-index: 50; transform: translateX(-100%); transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; padding: 1.5rem; }
-        aside.open { transform: translateX(0); }
-        .nav-btn { background: transparent; border: none; width: 100%; padding: 0.8rem 0; text-align: left; font-size: 1rem; font-weight: 500; color: var(--text-sec); cursor: pointer; display: flex; align-items: center; gap: 1rem; border-bottom: 1px solid transparent; }
-        .nav-btn:hover { color: var(--text-main); }
+        
+        .nav-btn { background: transparent; border: none; width: 100%; padding: 0.8rem 0; text-align: left; font-size: 1rem; font-weight: 500; color: var(--text-sec); cursor: pointer; display: flex; align-items: center; gap: 1rem; }
         .nav-btn.active { color: var(--dark); font-weight: 700; }
         .nav-group { margin-top: 2rem; font-size: 0.75rem; font-weight: 700; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
 
-        /* FILTERS & WIDGETS */
         .filters-bar { background: var(--bg-surface); border-bottom: 1px solid var(--border); padding: 0.5rem 1rem; display: none; gap: 0.5rem; flex-wrap: wrap; }
         .filters-bar.open { display: flex; }
-        .f-select { padding: 0.4rem; border: 1px solid var(--border); border-radius: 20px; font-size: 0.8rem; background: #fff; }
-        .f-search { flex: 1; padding: 0.4rem 1rem; border: 1px solid var(--border); border-radius: 20px; font-size: 0.85rem; min-width: 150px; }
+        .f-select, .f-search { padding: 0.4rem; border: 1px solid var(--border); border-radius: 20px; font-size: 0.8rem; background: #fff; }
+        .f-search { flex: 1; padding: 0.4rem 1rem; min-width: 150px; }
 
         .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; padding: 1rem; }
         .kpi-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; display: flex; flex-direction: column; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-        .kpi-label { font-size: 0.75rem; color: var(--text-sec); font-weight: 600; text-transform: uppercase; margin-bottom: 0.25rem; }
-        .kpi-val { font-size: 1.25rem; font-weight: 700; font-family: monospace; color: var(--text-main); }
         .kpi-fin { border-left: 4px solid var(--fin); } .kpi-org { border-left: 4px solid var(--org); }
+        .kpi-val { font-size: 1.25rem; font-weight: 700; font-family: monospace; color: var(--text-main); }
+        .kpi-label { font-size: 0.75rem; color: var(--text-sec); font-weight: 600; text-transform: uppercase; margin-bottom: 0.25rem; }
 
-        /* LIST & FAB */
         .list-area { flex: 1; overflow-y: auto; padding: 0 1rem 5rem; }
         .list-header { position: sticky; top: 0; background: var(--bg-body); padding: 1rem 0 0.5rem; font-weight: 700; color: var(--text-sec); font-size: 0.85rem; display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); }
         .row { display: grid; grid-template-columns: 24px 1fr auto; gap: 1rem; padding: 0.85rem 0; border-bottom: 1px solid var(--border); align-items: center; }
-        .row:last-child { border-bottom: none; }
-        .r-check { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; position: relative; transition: 0.2s; }
-        .r-check.pendente { border-color: var(--text-sec); }
-        .r-check.concluido { background: var(--ok); border-color: var(--ok); }
-        .r-check.cancelado { border-color: var(--err); }
+        .r-check { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; position: relative; }
+        .r-check.pendente { border-color: var(--text-sec); } .r-check.concluido { background: var(--ok); border-color: var(--ok); } .r-check.cancelado { border-color: var(--err); }
         .r-check.concluido::after { content:'✓'; color:#fff; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:12px; }
-        .r-main { display: flex; flex-direction: column; gap: 2px; overflow: hidden; cursor: pointer; }
         .r-title { font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .r-meta { font-size: 0.75rem; color: var(--text-sec); display: flex; align-items: center; gap: 6px; }
         .r-cat { background: var(--bg-surface); padding: 1px 6px; border-radius: 4px; font-weight: 600; font-size: 0.7rem; text-transform: uppercase; }
         .r-val { font-family: monospace; font-weight: 600; text-align: right; font-size: 0.95rem; }
 
-        .fab { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; background: var(--dark); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer; z-index: 30; transition: transform 0.2s; }
-        .fab:active { transform: scale(0.95); }
-
-        /* MODAL */
+        .fab { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; background: var(--dark); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer; z-index: 30; }
+        
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
         .modal-overlay.open { display: flex; }
-        .modal { background: #fff; width: 90%; max-width: 500px; padding: 1.5rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
+        .modal { background: #fff; width: 90%; max-width: 500px; padding: 1.5rem; border-radius: 12px; max-height: 90vh; overflow-y: auto; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
         .form-grp { margin-bottom: 1rem; }
 
-        /* GLOBAL LOADER */
         #loader { position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 200; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 1rem; }
     </style>
 </head>
 <body>
 
-    <!-- LOADER -->
-    <div id="loader">
-        <i class="ph ph-spinner ph-spin" style="font-size: 2.5rem; color: var(--dark);"></i>
-        <div id="loader_msg" style="font-weight: 600; color: var(--text-sec);">Processando...</div>
-    </div>
+    <div id="loader"><i class="ph ph-spinner ph-spin" style="font-size: 2.5rem; color: var(--dark);"></i><div id="loader_msg" style="font-weight: 600; color: var(--text-sec);">Processando...</div></div>
 
-    <!-- 1. SETUP INICIAL -->
+    <!-- 1. SETUP SCREEN -->
     <div id="screen_setup" class="screen">
-        <div class="center-box" style="max-width: 600px;">
-            <h2 style="margin-bottom: 1rem;">Configuração Inicial</h2>
-            <p style="color: var(--text-sec); margin-bottom: 2rem;">Cole os links preenchidos.</p>
+        <div class="center-box">
+            <h2 style="margin-bottom: 0.5rem;">Configuração do Sistema</h2>
+            <p style="color: var(--text-sec); margin-bottom: 2rem;">Conecte cada formulário à sua respectiva planilha.</p>
 
-            <div class="setup-card">
-                <strong>1. Planilha (CSV)</strong>
-                <input type="text" id="cfg_csv" class="setup-input" placeholder="https://docs.google.com/.../export?format=csv">
-            </div>
-            <div class="setup-card">
-                <strong>2. Form: Registros</strong>
-                <span class="setup-help">TAGS: TAG_ID, TAG_TITULO, TAG_DATA, TAG_HORA, TAG_VALOR, TAG_CAT, TAG_REC, TAG_STATUS, TAG_DET, TAG_TS, TAG_DEL</span>
-                <input type="text" id="cfg_form_rec" class="setup-input" placeholder="Link preenchido...">
-            </div>
-            <div class="setup-card">
-                <strong>3. Form: Listas</strong>
-                <span class="setup-help">TAGS: TAG_ID, TAG_NOME, TAG_TS, TAG_DEL</span>
-                <input type="text" id="cfg_form_cat" class="setup-input" placeholder="Link preenchido...">
-            </div>
-            <div class="setup-card">
-                <strong>4. Form: Logs</strong>
-                <span class="setup-help">TAGS: TAG_STATUS, TAG_DATA, TAG_AGENT, TAG_SCREEN, TAG_IP</span>
-                <input type="text" id="cfg_form_log" class="setup-input" placeholder="Link preenchido...">
+            <!-- BLOCO 1: REGISTROS -->
+            <div class="setup-block">
+                <div class="block-title"><i class="ph ph-database"></i> 1. Base de Registros</div>
+                <div class="block-desc">
+                    Use tags: TAG_ID, TAG_TITULO, TAG_DATA, TAG_HORA, TAG_VALOR, TAG_CAT, TAG_REC, TAG_STATUS, TAG_DET, TAG_TS, TAG_DEL
+                </div>
+                
+                <span class="field-label">Link do Formulário (Preenchido)</span>
+                <input type="text" id="cfg_form_rec" class="setup-input" placeholder="https://docs.google.com/...viewform?...">
+                
+                <span class="field-label">Link da Planilha (CSV)</span>
+                <input type="text" id="cfg_csv_rec" class="setup-input" placeholder="https://docs.google.com/...export?format=csv">
             </div>
 
-            <button class="btn-full" onclick="iniciar_diagnostico_setup()">CONECTAR</button>
-            
-            <div id="setup_diag" class="diag-list" style="display: none;">
-                <!-- JS Populates -->
+            <!-- BLOCO 2: LISTAS -->
+            <div class="setup-block">
+                <div class="block-title"><i class="ph ph-list-checks"></i> 2. Listas & Token</div>
+                <div class="block-desc">
+                    Use tags: TAG_ID, TAG_NOME, TAG_TS, TAG_DEL
+                </div>
+                
+                <span class="field-label">Link do Formulário (Preenchido)</span>
+                <input type="text" id="cfg_form_cat" class="setup-input" placeholder="https://docs.google.com/...viewform?...">
+                
+                <span class="field-label">Link da Planilha (CSV)</span>
+                <input type="text" id="cfg_csv_cat" class="setup-input" placeholder="https://docs.google.com/...export?format=csv">
             </div>
+
+            <!-- BLOCO 3: LOGS -->
+            <div class="setup-block">
+                <div class="block-title"><i class="ph ph-scroll"></i> 3. Logs de Segurança</div>
+                <div class="block-desc">
+                    Use tags: TAG_STATUS, TAG_DATA, TAG_AGENT, TAG_SCREEN, TAG_IP
+                </div>
+                
+                <span class="field-label">Link do Formulário (Preenchido)</span>
+                <input type="text" id="cfg_form_log" class="setup-input" placeholder="https://docs.google.com/...viewform?...">
+                
+                <span class="field-label">Link da Planilha (CSV)</span>
+                <input type="text" id="cfg_csv_log" class="setup-input" placeholder="https://docs.google.com/...export?format=csv">
+            </div>
+
+            <button class="btn-full" onclick="iniciar_diagnostico_setup()">SALVAR E CONECTAR</button>
+            <button class="btn-link" onclick="hard_reset()">⚠️ Limpar Dados / Reiniciar</button>
+
+            <div id="setup_diag" class="diag-list" style="display: none;"></div>
         </div>
     </div>
 
-    <!-- 2. REGISTRO DE TOKEN -->
+    <!-- 2. REGISTER SCREEN -->
     <div id="screen_register" class="screen">
-        <div class="center-box">
+        <div class="center-box" style="max-width:400px;">
             <h1><i class="ph ph-shield-plus"></i></h1>
             <h2>Criar Senha Mestra</h2>
-            <p style="color:var(--text-sec); margin-bottom:1.5rem;">Crie uma senha para criptografar seus dados.</p>
+            <p style="color:var(--text-sec); margin-bottom:1.5rem;">Defina a senha para criptografar seus dados.</p>
             <input type="password" id="reg_pass" class="setup-input" placeholder="Nova Senha" style="text-align:center; letter-spacing:4px;">
-            <input type="password" id="reg_pass_conf" class="setup-input" placeholder="Confirmar Senha" style="text-align:center; letter-spacing:4px;">
-            
+            <input type="password" id="reg_pass_conf" class="setup-input" placeholder="Confirmar" style="text-align:center; letter-spacing:4px;">
             <button class="btn-full" id="btn_criar_token" onclick="registrar_token()">CRIAR E SALVAR</button>
         </div>
     </div>
 
-    <!-- 3. MONITOR DE SINCRONIZAÇÃO (WAIT) -->
+    <!-- 3. WAIT SCREEN -->
     <div id="screen_wait" class="screen">
-        <div class="center-box">
+        <div class="center-box" style="max-width:400px;">
             <h1 style="color: var(--fin);"><i class="ph ph-arrows-clockwise ph-spin"></i></h1>
-            <h2 style="margin-bottom:1rem;">Sincronizando...</h2>
-            <p style="color:var(--text-sec); margin-bottom:1rem;">
-                Aguardando propagação dos dados no Google Sheets. Isso pode levar alguns minutos.
-            </p>
-            
+            <h2>Sincronizando...</h2>
+            <p style="color:var(--text-sec); margin-bottom:1rem;">Aguardando Google Sheets...</p>
             <div id="wait_diag" class="diag-list">
-                <div class="diag-item" id="chk_envio">
-                    <div class="d-icon d-ok"><i class="ph ph-check-circle"></i></div>
-                    <span>Senha enviada com sucesso</span>
-                </div>
-                <div class="diag-item" id="chk_google">
-                    <div class="d-icon d-load"><i class="ph ph-spinner"></i></div>
-                    <span>Aguardando Google (Tentativa <span id="try_count">1</span>)...</span>
-                </div>
+                <div class="diag-item"><div class="d-icon d-ok"><i class="ph ph-check-circle"></i></div><span>Senha enviada</span></div>
+                <div class="diag-item"><div class="d-icon d-load"><i class="ph ph-spinner"></i></div><span>Aguardando propagação (<span id="try_count">1</span>)...</span></div>
             </div>
-            
-            <p style="font-size:0.8rem; color:var(--text-sec); margin-top:2rem;">
-                Não feche esta tela. O sistema entrará automaticamente.
-            </p>
         </div>
     </div>
 
-    <!-- 4. LOGIN -->
+    <!-- 4. LOGIN SCREEN -->
     <div id="screen_login" class="screen">
-        <div class="center-box">
+        <div class="center-box" style="max-width:400px;">
             <h1 style="margin-bottom: 2rem;"><i class="ph ph-lock-key"></i></h1>
             <h3>Acesso Seguro</h3>
             <input type="password" id="login_pass" class="setup-input" placeholder="Senha" style="text-align: center; letter-spacing: 4px; font-size: 1.2rem;" onkeyup="if(event.key==='Enter') auth()">
             <button class="btn-full" onclick="auth()">ENTRAR</button>
             <p id="login_err" style="color: var(--err); margin-top: 1rem; font-size: 0.8rem;"></p>
-            <button class="btn-link" onclick="reset_config()" style="margin: 2rem auto 0; display:block;">Resetar Conexões</button>
+            <button class="btn-link" onclick="hard_reset()">Resetar Conexões</button>
         </div>
     </div>
 
-    <!-- 5. APP PRINCIPAL -->
+    <!-- 5. APP SCREEN -->
     <div id="screen_app" class="screen">
         <header>
             <button class="btn-icon" onclick="toggle_drawer()"><i class="ph ph-list"></i></button>
@@ -223,25 +202,13 @@
             </div>
         </header>
 
-        <!-- Filtros -->
         <div class="filters-bar" id="filters_bar">
             <input type="text" class="f-search" id="f_search" placeholder="Buscar..." onkeyup="render()">
-            <select class="f-select" id="f_period" onchange="render()">
-                <option value="hoje">Hoje</option>
-                <option value="ontem">Ontem</option>
-                <option value="mes" selected>Este Mês</option>
-                <option value="tudo">Tudo</option>
-            </select>
-            <select class="f-select" id="f_status" onchange="render()">
-                <option value="todos">Status</option>
-                <option value="pendente">Pendente</option>
-            </select>
-            <select class="f-select" id="f_cat" onchange="render()">
-                <option value="todos">Categoria</option>
-            </select>
+            <select class="f-select" id="f_period" onchange="render()"><option value="hoje">Hoje</option><option value="ontem">Ontem</option><option value="mes" selected>Este Mês</option><option value="tudo">Tudo</option></select>
+            <select class="f-select" id="f_status" onchange="render()"><option value="todos">Status</option><option value="pendente">Pendente</option></select>
+            <select class="f-select" id="f_cat" onchange="render()"><option value="todos">Categoria</option></select>
         </div>
 
-        <!-- Drawer -->
         <div class="drawer-overlay" id="drawer_overlay" onclick="toggle_drawer()"></div>
         <aside id="drawer">
             <div style="font-weight:700; font-size:1.2rem; margin-bottom:2rem; display:flex; gap:0.5rem; align-items:center;">
@@ -258,31 +225,22 @@
         </aside>
 
         <main style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
-            <!-- KPI -->
             <div id="dash_kpi" class="kpi-row" style="display:none;">
                 <div class="kpi-card kpi-fin">
-                    <span class="kpi-label">Saldo</span>
-                    <span class="kpi-val" id="kpi_bal">R$ 0,00</span>
+                    <span class="kpi-label">Saldo</span><span class="kpi-val" id="kpi_bal">R$ 0,00</span>
                     <div style="font-size:0.75rem; color:var(--text-sec); display:flex; justify-content:space-between; margin-top:4px;">
-                        <span style="color:var(--ok)">Ent: <span id="kpi_in">0</span></span>
-                        <span style="color:var(--err)">Sai: <span id="kpi_out">0</span></span>
+                        <span style="color:var(--ok)">Ent: <span id="kpi_in">0</span></span><span style="color:var(--err)">Sai: <span id="kpi_out">0</span></span>
                     </div>
                 </div>
                 <div class="kpi-card kpi-org">
-                    <span class="kpi-label">Tarefas</span>
-                    <span class="kpi-val" id="kpi_task">0</span>
+                    <span class="kpi-label">Tarefas</span><span class="kpi-val" id="kpi_task">0</span>
                     <div style="font-size:0.75rem; color:var(--text-sec); display:flex; justify-content:space-between; margin-top:4px;">
-                        <span style="color:var(--warn)">Pend: <span id="kpi_pend">0</span></span>
-                        <span style="color:var(--ok)">Ok: <span id="kpi_ok">0</span></span>
+                        <span style="color:var(--warn)">Pend: <span id="kpi_pend">0</span></span><span style="color:var(--ok)">Ok: <span id="kpi_ok">0</span></span>
                     </div>
                 </div>
             </div>
-            <!-- LIST -->
             <div class="list-area">
-                <div class="list-header">
-                    <span id="list_title">Registros</span>
-                    <span id="list_count">0</span>
-                </div>
+                <div class="list-header"><span id="list_title">Registros</span><span id="list_count">0</span></div>
                 <div id="list_content"></div>
             </div>
         </main>
@@ -294,9 +252,7 @@
         <div class="modal">
             <h3 style="margin-bottom:1rem;">Registro</h3>
             <input type="hidden" id="e_id">
-            <div class="form-grp">
-                <label>Título</label> <input type="text" id="e_titulo" class="setup-input" style="margin:0;">
-            </div>
+            <div class="form-grp"><label>Título</label><input type="text" id="e_titulo" class="setup-input" style="margin:0;"></div>
             <div class="form-grid">
                 <div class="form-grp"><label>Data</label><input type="date" id="e_data" class="setup-input" style="margin:0;"></div>
                 <div class="form-grp"><label>Hora</label><input type="time" id="e_hora" class="setup-input" style="margin:0;"></div>
@@ -330,13 +286,10 @@
         let POLLING_INTERVAL = null;
 
         window.onload = () => verificar_estado_inicial();
+        function show_screen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+        function show_loader(show, msg) { const l=document.getElementById('loader'); if(show){l.style.display='flex';if(msg)document.getElementById('loader_msg').innerText=msg;}else{l.style.display='none';} }
 
-        function show_screen(id) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-        }
-
-        // === 1. SETUP & DIAGNOSTICS ===
+        // === 1. SETUP LOGIC ===
         function verificar_estado_inicial() {
             const local_conf = localStorage.getItem('ton_config');
             if (local_conf) {
@@ -347,136 +300,154 @@
             }
         }
 
+        function hard_reset() {
+            if(confirm("Isso apagará todas as configurações locais. Tem certeza?")) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
         async function iniciar_diagnostico_setup() {
             const area = document.getElementById('setup_diag');
-            area.style.display = 'block';
-            area.innerHTML = ''; // Reset
-
-            const add_check = (label, status) => {
-                const icon = status === 'ok' ? '<i class="ph ph-check-circle"></i>' : (status === 'load' ? '<i class="ph ph-spinner"></i>' : '<i class="ph ph-x-circle"></i>');
-                const cls = status === 'ok' ? 'd-ok' : (status === 'load' ? 'd-load' : 'd-err');
+            area.style.display = 'block'; area.innerHTML = '';
+            const add_check = (label, st) => {
+                const icon = st==='ok'?'<i class="ph ph-check-circle"></i>':(st==='load'?'<i class="ph ph-spinner"></i>':'<i class="ph ph-x-circle"></i>');
+                const cls = st==='ok'?'d-ok':(st==='load'?'d-load':'d-err');
                 area.innerHTML += `<div class="diag-item"><div class="d-icon ${cls}">${icon}</div><span>${label}</span></div>`;
             };
 
-            // 1. Validar Inputs
-            const csv = document.getElementById('cfg_csv').value;
-            const l_rec = document.getElementById('cfg_form_rec').value;
-            const l_cat = document.getElementById('cfg_form_cat').value;
-            const l_log = document.getElementById('cfg_form_log').value;
+            const csv_rec = document.getElementById('cfg_csv_rec').value;
+            const csv_cat = document.getElementById('cfg_csv_cat').value;
+            const csv_log = document.getElementById('cfg_csv_log').value;
+            const form_rec = document.getElementById('cfg_form_rec').value;
+            const form_cat = document.getElementById('cfg_form_cat').value;
+            const form_log = document.getElementById('cfg_form_log').value;
 
-            if(!csv || !l_rec || !l_cat || !l_log) { alert('Preencha tudo.'); return; }
+            if(!csv_rec || !csv_cat || !csv_log || !form_rec || !form_cat || !form_log) { alert('Preencha tudo.'); return; }
 
-            // 2. Parse Links
             const map_rec = { id:'TAG_ID', titulo:'TAG_TITULO', data:'TAG_DATA', hora:'TAG_HORA', valor:'TAG_VALOR', cat:'TAG_CAT', rec:'TAG_REC', status:'TAG_STATUS', det:'TAG_DET', ts:'TAG_TS', del:'TAG_DEL' };
             const map_cat = { id:'TAG_ID', nome:'TAG_NOME', ts:'TAG_TS', del:'TAG_DEL' };
             const map_log = { status:'TAG_STATUS', data:'TAG_DATA', agent:'TAG_AGENT', screen:'TAG_SCREEN', ip:'TAG_IP' };
 
-            const c_rec = parse_link(l_rec, map_rec); add_check('Link Registros validado', c_rec?'ok':'err');
-            const c_cat = parse_link(l_cat, map_cat); add_check('Link Listas validado', c_cat?'ok':'err');
-            const c_log = parse_link(l_log, map_log); add_check('Link Logs validado', c_log?'ok':'err');
+            const c_rec = parse_link(form_rec, map_rec); add_check('Form Registros', c_rec?'ok':'err');
+            const c_cat = parse_link(form_cat, map_cat); add_check('Form Listas', c_cat?'ok':'err');
+            const c_log = parse_link(form_log, map_log); add_check('Form Logs', c_log?'ok':'err');
 
             if(!c_rec || !c_cat || !c_log) return;
 
-            // 3. Testar Conexão CSV
-            add_check('Testando conexão CSV...', 'load');
+            // Test CSV Connection (Listas é o mais importante para Auth)
+            add_check('Testando CSV Listas...', 'load');
             try {
-                const res = await fetch(csv + '&t=' + Date.now());
+                const res = await fetch(csv_cat + '&t=' + Date.now());
                 if(res.ok) {
-                    area.lastElementChild.innerHTML = `<div class="d-icon d-ok"><i class="ph ph-check-circle"></i></div><span>Conexão CSV estabelecida</span>`;
+                    area.lastElementChild.innerHTML = `<div class="d-icon d-ok"><i class="ph ph-check-circle"></i></div><span>Conexão CSV OK</span>`;
                     
-                    // Sucesso total -> Salvar
-                    const conf = { csv_cat: csv, csv_rec: csv, forms: { rec: c_rec, cat: c_cat, log: c_log } };
+                    const conf = { 
+                        csvs: { rec: csv_rec, cat: csv_cat, log: csv_log },
+                        forms: { rec: c_rec, cat: c_cat, log: c_log } 
+                    };
                     localStorage.setItem('ton_config', JSON.stringify(conf));
                     CONFIG = conf;
-                    
-                    setTimeout(() => verificar_token_remoto(), 1000); // Avança
-                } else {
-                    throw new Error('Status ' + res.status);
-                }
+                    setTimeout(() => verificar_token_remoto(), 1000);
+                } else throw new Error();
             } catch(e) {
-                area.lastElementChild.innerHTML = `<div class="d-icon d-err"><i class="ph ph-x-circle"></i></div><span>Erro CSV: ${e.message}</span>`;
+                area.lastElementChild.innerHTML = `<div class="d-icon d-err"><i class="ph ph-x-circle"></i></div><span>Erro CSV: Inacessível</span>`;
             }
         }
 
+        // === 2. AUTH FLOW ===
         async function verificar_token_remoto() {
             try {
-                const res = await fetch(CONFIG.csv_cat + '&t=' + Date.now());
+                // Fetch from LISTS CSV
+                const res = await fetch(CONFIG.csvs.cat + '&t=' + Date.now());
                 const txt = await res.text();
                 const rows = parse_csv_simple(txt);
-
-                let token_found = null;
+                
+                let token = null;
+                // Procura na planilha de categorias se tem o sys_token
                 rows.forEach(r => {
                     const idx = r.indexOf('sys_token');
-                    if (idx > -1 && r[idx+1]) token_found = r[idx+1];
+                    if (idx > -1 && r[idx+1]) token = r[idx+1];
                 });
 
-                if (token_found) {
-                    REMOTE_TOKEN_HASH = token_found;
-                    if(POLLING_INTERVAL) clearInterval(POLLING_INTERVAL); // Stop polling if active
+                if (token) {
+                    REMOTE_TOKEN_HASH = token;
+                    if(POLLING_INTERVAL) clearInterval(POLLING_INTERVAL);
                     show_screen('screen_login');
                 } else {
                     show_screen('screen_register');
                 }
             } catch (e) {
                 show_screen('screen_setup');
-                alert('Erro ao conectar: ' + e.message);
+                alert('Erro conexão: ' + e.message);
             }
         }
 
-        // === 2. REGISTRO & MONITORAMENTO ===
         async function registrar_token() {
             const p1 = document.getElementById('reg_pass').value;
             const p2 = document.getElementById('reg_pass_conf').value;
             if(!p1 || p1 !== p2) return alert('Senhas inválidas');
 
-            // 1. Bloqueia botão
-            const btn = document.getElementById('btn_criar_token');
-            btn.disabled = true;
-            btn.innerText = 'ENVIANDO...';
+            document.getElementById('btn_criar_token').disabled = true;
+            document.getElementById('btn_criar_token').innerText = 'ENVIANDO...';
 
             const hash = await sha256(p1);
-            const data = { id: 'sys_token', nome: hash, ts: new Date().toISOString(), del: 'false' };
+            const data = { id:'sys_token', nome:hash, ts:new Date().toISOString(), del:'false' };
 
             try {
-                // 2. Envia
                 await send_form(CONFIG.forms.cat, data);
-                
-                // 3. Muda para Tela de Monitoramento
                 iniciar_monitoramento();
-
             } catch(e) {
-                alert('Erro ao enviar: ' + e.message);
-                btn.disabled = false;
-                btn.innerText = 'CRIAR E SALVAR';
+                alert('Erro: '+e.message);
+                document.getElementById('btn_criar_token').disabled = false;
             }
         }
 
         function iniciar_monitoramento() {
             show_screen('screen_wait');
             let tries = 1;
-            
-            // Loop Infinito até achar o token
             POLLING_INTERVAL = setInterval(async () => {
                 document.getElementById('try_count').innerText = tries++;
-                
                 try {
-                    const res = await fetch(CONFIG.csv_cat + '&t=' + Date.now());
+                    const res = await fetch(CONFIG.csvs.cat + '&t=' + Date.now());
                     const txt = await res.text();
                     if(txt.includes('sys_token')) {
-                        // SUCESSO!
                         clearInterval(POLLING_INTERVAL);
-                        
-                        const el = document.getElementById('chk_google');
-                        el.innerHTML = `<div class="d-icon d-ok"><i class="ph ph-check-circle"></i></div><span>Dados Sincronizados!</span>`;
-                        
-                        setTimeout(() => verificar_token_remoto(), 1500); // Vai pro Login
+                        document.getElementById('wait_diag').lastElementChild.innerHTML = `<div class="d-icon d-ok"><i class="ph ph-check-circle"></i></div><span>Sincronizado!</span>`;
+                        setTimeout(() => verificar_token_remoto(), 1500);
                     }
-                } catch(e) { console.log('Polling err', e); }
-
-            }, 10000); // Checa a cada 10 seg
+                } catch(e){}
+            }, 10000);
         }
 
-        // === 3. APP UTILS (Parsers & Core) ===
+        // === 3. LOGIN & APP LOAD ===
+        async function auth() {
+            const pass = document.getElementById('login_pass').value;
+            const hash = await sha256(pass);
+            if (hash === REMOTE_TOKEN_HASH) {
+                show_loader(true, 'Carregando dados...');
+                load_app_data();
+            } else {
+                document.getElementById('login_err').innerText = 'Senha incorreta';
+            }
+        }
+
+        async function load_app_data() {
+            try {
+                const res = await fetch(CONFIG.csvs.rec + '&t=' + Date.now());
+                const txt = await res.text();
+                parse_main_csv(txt);
+            } catch(e) {}
+            
+            // Seed cats if empty
+            if(DATA.cats.length===0) ['Trabalhos','Projetos','Estudos','Hobbyes','Esportes','Saúde','Família'].forEach(c=>DATA.cats.push({id:'c'+Math.random(),nome:c}));
+            
+            nav('dashboard');
+            show_screen('screen_app');
+            show_loader(false);
+        }
+
+        // === 4. PARSERS & UTILS ===
         function parse_link(url, mapping) {
             try {
                 if (!url.includes('viewform')) throw new Error();
@@ -499,46 +470,6 @@
             return rows;
         }
 
-        async function send_form(cfg, data) {
-            const fd = new URLSearchParams();
-            for(let [key, entryId] of Object.entries(cfg.entries)) { fd.append(entryId, data[key]||''); }
-            await fetch(cfg.url, { method: 'POST', mode: 'no-cors', body: fd });
-        }
-
-        async function sha256(s) {
-            const b = new TextEncoder().encode(s);
-            const h = await crypto.subtle.digest('SHA-256', b);
-            return Array.from(new Uint8Array(h)).map(x => x.toString(16).padStart(2,'0')).join('');
-        }
-
-        // === 4. AUTH & MAIN APP ===
-        async function auth() {
-            const pass = document.getElementById('login_pass').value;
-            const hash = await sha256(pass);
-            if (hash === REMOTE_TOKEN_HASH) {
-                document.getElementById('loader').style.display = 'flex';
-                load_app_data();
-            } else {
-                document.getElementById('login_err').innerText = 'Senha incorreta.';
-            }
-        }
-
-        async function load_app_data() {
-            // Carrega dados e inicia App
-            try {
-                const res = await fetch(CONFIG.csv_rec + '&t=' + Date.now());
-                const txt = await res.text();
-                parse_main_csv(txt); // Popula DATA.recs
-            } catch(e) {}
-            
-            // Categorias Hardcoded + CSV se tivesse (Simplificado para seed)
-            if(DATA.cats.length === 0) ['Trabalhos','Projetos','Estudos','Hobbyes','Esportes','Saúde','Família'].forEach(c => DATA.cats.push({id:'c'+Math.random(), nome:c}));
-            
-            nav('dashboard');
-            show_screen('screen_app');
-            document.getElementById('loader').style.display = 'none';
-        }
-
         function parse_main_csv(txt) {
             const rows = parse_csv_simple(txt);
             DATA.recs = [];
@@ -546,13 +477,28 @@
                 const id = r.find(c => c.startsWith('r'));
                 if(id) {
                     const i = r.indexOf(id);
-                    if(r[i+1]) DATA.recs.push({id:r[i], titulo:r[i+1], data:r[i+2], hora:r[i+3], valor:r[i+4], cat:r[i+5], rec:r[i+6], status:r[i+7], det:r[i+8], ts:r[i+9], del:r[i+10]});
+                    // Procura campos relativos ao ID
+                    if(r[i+1]) DATA.recs.push({
+                        id:r[i], titulo:r[i+1], data:r[i+2], hora:r[i+3], valor:r[i+4], 
+                        cat:r[i+5], rec:r[i+6], status:r[i+7], det:r[i+8], ts:r[i+9], del:r[i+10]
+                    });
                 }
             });
             render();
         }
 
-        // UI & Render (Mantido v5/v6)
+        async function send_form(cfg, data) {
+            const fd = new URLSearchParams();
+            for(let [key, entryId] of Object.entries(cfg.entries)) { fd.append(entryId, data[key]||''); }
+            await fetch(cfg.url, { method: 'POST', mode: 'no-cors', body: fd });
+        }
+        async function sha256(s) {
+            const b = new TextEncoder().encode(s);
+            const h = await crypto.subtle.digest('SHA-256', b);
+            return Array.from(new Uint8Array(h)).map(x => x.toString(16).padStart(2,'0')).join('');
+        }
+
+        // === UI & RENDER (Standard v6) ===
         function nav(view) {
             VIEW = view; toggle_drawer(false);
             const t = { dashboard:'Dashboard', todos:'Todos', fin:'Financeiro', org:'Organizacional', cats:'Categorias' };
@@ -563,13 +509,11 @@
 
         function render() {
             const list = document.getElementById('list_content'); list.innerHTML = '';
-            let items = DATA.recs.filter(r => r.del !== 'true'); // Filtro de deletados
+            let items = DATA.recs.filter(r => r.del !== 'true'); 
             
-            // Logic filters (Same as prev)
             if(VIEW === 'fin') items = items.filter(r => Number(r.valor) > 0);
             if(VIEW === 'org') items = items.filter(r => !r.valor || Number(r.valor)===0);
             
-            // Bar Filters
             const search = document.getElementById('f_search').value.toLowerCase();
             const f_st = document.getElementById('f_status').value;
             const f_cat = document.getElementById('f_cat').value;
@@ -597,41 +541,38 @@
                 </div>`;
             });
         }
-
+        
         function calc_kpi(items) {
             let bal=0, in_=0, out=0, task=0, pend=0, ok=0;
             items.forEach(r => {
                 const v = Number(r.valor||0);
-                if(v>0) { 
-                    if(r.cat==='Trabalhos') { in_+=v; bal+=v; } else { out+=v; bal-=v; } 
-                } else {
-                    task++; if(r.status==='pendente') pend++; if(r.status==='concluido') ok++;
-                }
+                if(v>0) { if(r.cat==='Trabalhos') { in_+=v; bal+=v; } else { out+=v; bal-=v; } } 
+                else { task++; if(r.status==='pendente') pend++; if(r.status==='concluido') ok++; }
             });
             document.getElementById('kpi_bal').innerText = bal.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-            document.getElementById('kpi_bal').style.color = bal >= 0 ? 'var(--fin)' : 'var(--err)';
             document.getElementById('kpi_in').innerText = in_.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
             document.getElementById('kpi_out').innerText = out.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
             document.getElementById('kpi_task').innerText = task; document.getElementById('kpi_pend').innerText = pend; document.getElementById('kpi_ok').innerText = ok;
         }
 
-        // CRUD Helpers (Simplificado)
+        // CRUD
         function toggle_drawer(f){ const d=document.getElementById('drawer'); const o=document.getElementById('drawer_overlay'); if(f===false||d.classList.contains('open')){d.classList.remove('open');o.classList.remove('open');}else{d.classList.add('open');o.classList.add('open');} }
         function toggle_filters(){ document.getElementById('filters_bar').classList.toggle('open'); }
-        function modal_open(){ document.getElementById('e_id').value=''; document.getElementById('e_data').value=new Date().toISOString().split('T')[0]; document.getElementById('modal_overlay').classList.add('open'); }
+        function modal_open(){ document.getElementById('e_id').value=''; document.getElementById('e_data').value=new Date().toISOString().split('T')[0]; document.getElementById('modal_overlay').classList.add('open'); populate_cats(); }
         function modal_close(){ document.getElementById('modal_overlay').classList.remove('open'); }
+        function populate_cats(){ const s=document.getElementById('e_cat'); s.innerHTML=''; DATA.cats.forEach(c=>s.innerHTML+=`<option value="${c.nome}">${c.nome}</option>`); }
         function edit_item(id){ 
-            const r=DATA.recs.find(i=>i.id===id); document.getElementById('e_id').value=r.id; document.getElementById('e_titulo').value=r.titulo; document.getElementById('e_data').value=r.data; document.getElementById('e_valor').value=r.valor; document.getElementById('e_cat').innerHTML=`<option>${r.cat}</option>`; document.getElementById('e_status').value=r.status; document.getElementById('modal_overlay').classList.add('open'); 
+            const r=DATA.recs.find(i=>i.id===id); document.getElementById('e_id').value=r.id; document.getElementById('e_titulo').value=r.titulo; document.getElementById('e_data').value=r.data; document.getElementById('e_valor').value=r.valor; 
+            populate_cats(); document.getElementById('e_cat').value=r.cat; document.getElementById('e_status').value=r.status; document.getElementById('modal_overlay').classList.add('open'); 
         }
         function save_item(){
             const id=document.getElementById('e_id').value||'r'+Date.now();
-            const item={id, titulo:document.getElementById('e_titulo').value, data:document.getElementById('e_data').value, valor:document.getElementById('e_valor').value, cat:'Geral', status:'pendente', del:'false'};
+            const item={id, titulo:document.getElementById('e_titulo').value, data:document.getElementById('e_data').value, valor:document.getElementById('e_valor').value, cat:document.getElementById('e_cat').value, status:'pendente', del:'false'};
             const idx=DATA.recs.findIndex(r=>r.id===id); if(idx>-1)DATA.recs[idx]=item; else DATA.recs.push(item);
             QUEUE.push({type:'rec',data:item}); render(); modal_close();
         }
         function del_item(){ const id=document.getElementById('e_id').value; if(id){ const r=DATA.recs.find(i=>i.id===id); r.del='true'; QUEUE.push({type:'rec',data:r}); render(); modal_close(); } }
         async function sincronizar(){ alert('Enviando '+QUEUE.length+' itens...'); for(let q of QUEUE){ await send_form(CONFIG.forms[q.type], q.data); } QUEUE=[]; alert('OK'); }
-        function reset_config(){ localStorage.clear(); location.reload(); }
         function logout(){ location.reload(); }
     </script>
 </body>
