@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Life Dash v6.2 | Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body>
+    <div id="loader"><i class="ph ph-spinner ph-spin" style="font-size: 2.5rem; color: var(--dark);"></i><div id="loader_msg">...</div></div>
+
+    <header>
+        <button class="btn-icon" onclick="toggle_drawer()"><i class="ph ph-list"></i></button>
+        <div class="h-title" id="page_title">Dashboard</div>
+        <div style="display: flex; gap: 0.5rem;">
+            <button class="btn-icon" onclick="toggle_filters()"><i class="ph ph-funnel"></i></button>
+            <button class="btn-icon" onclick="sincronizar()"><i class="ph ph-cloud-arrow-up"></i></button>
+        </div>
+    </header>
+
+    <div class="filters-bar" id="filters_bar">
+        <input type="text" class="f-search" id="f_search" placeholder="Buscar..." onkeyup="render()">
+        <select class="f-select" id="f_period" onchange="render()"><option value="hoje">Hoje</option><option value="ontem">Ontem</option><option value="mes" selected>Este Mês</option><option value="tudo">Tudo</option></select>
+        <select class="f-select" id="f_status" onchange="render()"><option value="todos">Status</option><option value="pendente">Pendente</option></select>
+        <select class="f-select" id="f_cat" onchange="render()"><option value="todos">Categoria</option></select>
+    </div>
+
+    <div class="drawer-overlay" id="drawer_overlay" onclick="toggle_drawer()"></div>
+    <aside id="drawer">
+        <div style="font-weight:700; font-size:1.2rem; margin-bottom:2rem; display:flex; gap:0.5rem; align-items:center;">
+            <i class="ph ph-squares-four"></i> Ton Planner
+        </div>
+        <button class="nav-btn active" onclick="nav('dashboard')"><i class="ph ph-chart-pie-slice"></i> Dashboard</button>
+        <div class="nav-group">REGISTROS</div>
+        <button class="nav-btn" onclick="nav('todos')"><i class="ph ph-list-dashes"></i> Todos</button>
+        <button class="nav-btn" onclick="nav('fin')"><i class="ph ph-currency-dollar"></i> Financeiro</button>
+        <button class="nav-btn" onclick="nav('org')"><i class="ph ph-check-square"></i> Organizacional</button>
+        <div class="nav-group">SISTEMA</div>
+        <button class="nav-btn" onclick="logout()"><i class="ph ph-sign-out"></i> Sair</button>
+    </aside>
+
+    <main style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+        <div id="dash_kpi" class="kpi-row" style="display:none;">
+            <div class="kpi-card kpi-fin">
+                <span class="kpi-label">Saldo</span><span class="kpi-val" id="kpi_bal">R$ 0,00</span>
+                <div style="font-size:0.75rem; color:var(--text-sec); display:flex; justify-content:space-between; margin-top:4px;">
+                    <span style="color:var(--ok)">Ent: <span id="kpi_in">0</span></span><span style="color:var(--err)">Sai: <span id="kpi_out">0</span></span>
+                </div>
+            </div>
+            <div class="kpi-card kpi-org">
+                <span class="kpi-label">Tarefas</span><span class="kpi-val" id="kpi_task">0</span>
+                <div style="font-size:0.75rem; color:var(--text-sec); display:flex; justify-content:space-between; margin-top:4px;">
+                    <span style="color:var(--warn)">Pend: <span id="kpi_pend">0</span></span><span style="color:var(--ok)">Ok: <span id="kpi_ok">0</span></span>
+                </div>
+            </div>
+        </div>
+        <div class="list-area">
+            <div class="list-header"><span id="list_title">Registros</span><span id="list_count">0</span></div>
+            <div id="list_content"></div>
+        </div>
+    </main>
+    <div class="fab" onclick="modal_open()"><i class="ph ph-plus"></i></div>
+
+    <!-- MODAL -->
+    <div class="modal-overlay" id="modal_overlay">
+        <div class="modal">
+            <h3 style="margin-bottom:1rem;">Registro</h3>
+            <input type="hidden" id="e_id">
+            <div class="form-grp"><label>Título</label><input type="text" id="e_titulo" class="setup-input" style="margin:0;"></div>
+            <div class="form-grid">
+                <div class="form-grp"><label>Data</label><input type="date" id="e_data" class="setup-input" style="margin:0;"></div>
+                <div class="form-grp"><label>Hora</label><input type="time" id="e_hora" class="setup-input" style="margin:0;"></div>
+            </div>
+            <div class="form-grid">
+                <div class="form-grp"><label>Valor</label><input type="number" id="e_valor" step="0.01" class="setup-input" style="margin:0;"></div>
+                <div class="form-grp"><label>Categoria</label><select id="e_cat" class="setup-input" style="margin:0;"></select></div>
+            </div>
+            <div class="form-grid">
+                <div class="form-grp"><label>Status</label><select id="e_status" class="setup-input" style="margin:0;"><option value="pendente">Pendente</option><option value="concluido">Concluído</option></select></div>
+            </div>
+            <div class="form-grp"><label>Detalhes</label><textarea id="e_det" class="setup-input" style="margin:0;" rows="2"></textarea></div>
+            <div style="display:flex; align-items:center; margin-top:1rem;">
+                <button class="btn-link" onclick="del_item()" style="color:var(--err)">Excluir</button>
+                <div style="display:flex; gap:1rem;">
+                    <button class="btn-link" onclick="modal_close()">Cancelar</button>
+                    <button class="btn-full" onclick="save_item()" style="margin:0; width:auto; padding:0.6rem 2rem;">SALVAR</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/utils.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
