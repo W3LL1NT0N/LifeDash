@@ -5,18 +5,25 @@ let CONFIG = {};
 function init_setup() {
     const local_conf = localStorage.getItem('ton_config');
     if (local_conf) {
-        CONFIG = JSON.parse(local_conf);
-        // Se já tem config, delega para auth.js verificar token
-        if(typeof verificar_token_remoto === 'function') verificar_token_remoto();
+        try {
+            CONFIG = JSON.parse(local_conf);
+            // Verifica se a config tem estrutura nova
+            if (!CONFIG.csvs || !CONFIG.csvs.rec) throw new Error("Config antiga");
+            
+            if(typeof verificar_token_remoto === 'function') verificar_token_remoto();
+        } catch(e) {
+            localStorage.clear(); // Limpa config ruim
+            show_screen('screen_setup');
+        }
     } else {
         show_screen('screen_setup');
     }
 }
 
 function hard_reset() {
-    if(confirm("Isso apagará todas as configurações locais. Tem certeza?")) {
+    if(confirm("ATENÇÃO: Isso apagará todas as conexões e o login deste navegador. Continuar?")) {
         localStorage.clear();
-        window.location.href = 'index.html';
+        window.location.reload();
     }
 }
 
@@ -39,7 +46,6 @@ async function iniciar_diagnostico_setup() {
 
     if(!csv_rec || !csv_cat || !csv_log || !form_rec || !form_cat || !form_log) { alert('Preencha tudo.'); return; }
 
-    // Mapeamentos
     const map_rec = { id:'TAG_ID', titulo:'TAG_TITULO', data:'TAG_DATA', hora:'TAG_HORA', valor:'TAG_VALOR', cat:'TAG_CAT', rec:'TAG_REC', status:'TAG_STATUS', det:'TAG_DET', ts:'TAG_TS', del:'TAG_DEL' };
     const map_cat = { id:'TAG_ID', nome:'TAG_NOME', ts:'TAG_TS', del:'TAG_DEL' };
     const map_log = { status:'TAG_STATUS', data:'TAG_DATA', agent:'TAG_AGENT', screen:'TAG_SCREEN', ip:'TAG_IP' };
@@ -50,11 +56,11 @@ async function iniciar_diagnostico_setup() {
 
     if(!c_rec || !c_cat || !c_log) return;
 
-    add_check('Testando CSV Listas...', 'load');
+    add_check('Testando Conexão CSV...', 'load');
     try {
         const res = await fetch(csv_cat + '&t=' + Date.now());
         if(res.ok) {
-            area.lastElementChild.innerHTML = `<div class="d-icon d-ok"><i class="ph ph-check-circle"></i></div><span>Conexão CSV OK</span>`;
+            area.lastElementChild.innerHTML = `<div class="d-icon d-ok"><i class="ph ph-check-circle"></i></div><span>Conexão OK</span>`;
             
             const conf = { 
                 csvs: { rec: csv_rec, cat: csv_cat, log: csv_log },
