@@ -282,6 +282,79 @@
     </div>
 
     <script>
+        // --- UTILS ---
+        const utils = {
+            sha256: async (s) => {
+                const b = new TextEncoder().encode(s);
+                const h = await crypto.subtle.digest('SHA-256', b);
+                return Array.from(new Uint8Array(h)).map(x => x.toString(16).padStart(2,'0')).join('');
+            },
+            parse_form_link: (url, map) => {
+                try {
+                    const base = url.split('/viewform')[0] + '/formResponse';
+                    const params = new URLSearchParams(url.split('?')[1]);
+                    const entries = {};
+                    for (let [k, t] of Object.entries(map)) {
+                        params.forEach((v, pk) => { if (v.trim() === t) entries[k] = pk; });
+                    }
+                    return { base, entries };
+                } catch { return null; }
+            },
+            send_form: async (ep, d) => {
+                const fd = new URLSearchParams();
+                for(let [k, id] of Object.entries(ep.entries)) { 
+                    let v = d[k]; if(v===true)v='True'; if(v===false)v='False'; if(v===undefined)v='';
+                    fd.append(id, v);
+                }
+                await fetch(ep.url, { method: 'POST', mode: 'no-cors', body: fd });
+            },
+            // Parser CSV Genérico adicionado de volta
+            parse_csv: (txt) => {
+                const res=[], lines=txt.split('\n');
+                lines.forEach(l => {
+                    if(!l.trim()) return;
+                    const r = l.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                    res.push(r.map(c => c.trim().replace(/^"|"$/g, '').replace(/""/g, '"')));
+                });
+                return res;
+            },
+            proc_csv: (txt, type) => {
+                const lines = txt.split('\n'), res = [];
+                lines.forEach(l => {
+                    if(!l.trim()) return;
+                    const r = l.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
+                    // Detect ID col based on pattern: r... or c... or sys...
+                    let idIdx = -1;
+                    r.forEach((cell, i) => { if((type==='rec' && /^r\d+/.test(cell)) || (type==='cat' && (/^[cs]\d+|sys_/.test(cell))) || (type==='log' && cell.includes('SUCESSO'))) idIdx = i; });
+                    
+                    if(idIdx > -1) {
+                       if(type==='rec') res.push({id:r[idIdx], titulo:r[idIdx+1], data:r[idIdx+2], hora:r[idIdx+3], valor:r[idIdx+4], cat:r[idIdx+5], rec:r[idIdx+6], status:r[idIdx+7], det:r[idIdx+8], ts:r[idIdx+9], del:r[idIdx+10]});
+                       if(type==='cat') res.push({id:r[idIdx], nome:r[idIdx+1], ts:r[idIdx+2], del:r[idIdx+3]});
+                    }
+                    if(type==='log' && r.length>=3) res.push({status:r[0], data:r[1], agent:r[2]});
+                });
+                return res;
+            },
+            get_date: (p, ws) => {
+                const h=new Date(); h.setHours(0,0,0,0); const e=new Date(); e.setHours(23,59,59,999);
+                const add=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
+                const stW=(d)=>{const x=new Date(d);const diff=(x.getDay()<ws?7:0)+x.getDay()-ws;x.setDate(x.getDate()-diff);return x;};
+                if(p==='hoje') return {start:h,end:e};
+                if(p==='ontem') return {start:add(h,-1),end:add(e,-1)};
+                if(p==='amanha') return {start:add(h,1),end:add(e,1)};
+                if(p==='semana_atual') {const s=stW(h); return {start:s,end:add(s,6)};}
+                if(p==='semana_passada') {const s=add(stW(h),-7); return {start:s,end:add(s,6)};}
+                if(p==='semana_vem') {const s=add(stW(h),7); return {start:s,end:add(s,6)};}
+                if(p==='mes_atual') return {start:new Date(h.getFullYear(),h.getMonth(),1),end:new Date(h.getFullYear(),h.getMonth()+1,0)};
+                if(p==='mes_passado') return {start:new Date(h.getFullYear(),h.getMonth()-1,1),end:new Date(h.getFullYear(),h.getMonth(),0)};
+                if(p==='mes_vem') return {start:new Date(h.getFullYear(),h.getMonth()+1,1),end:new Date(h.getFullYear(),h.getMonth()+2,0)};
+                if(p==='ano_atual') return {start:new Date(h.getFullYear(),0,1),end:new Date(h.getFullYear(),11,31)};
+                if(p==='ano_passado') return {start:new Date(h.getFullYear()-1,0,1),end:new Date(h.getFullYear()-1,11,31)};
+                if(p==='ano_vem') return {start:new Date(h.getFullYear()+1,0,1),end:new Date(h.getFullYear()+1,11,31)};
+                return null;
+            }
+        };
+
         // --- 1. CORE SYSTEM ---
         const sys = {
             config: {},
@@ -340,7 +413,6 @@
                 }
 
                 // 2. Save Config to LISTS Form (Cloud Storage of Profile)
-                // We save it as a special row: ID='sys_config', NOME=JSON.stringify(cfg)
                 const configRow = {
                     id: 'sys_config',
                     nome: JSON.stringify(cfg),
@@ -379,13 +451,10 @@
                     const txt = await res.text();
                     const rows = utils.parse_csv(txt);
                     
-                    // Find row where ID is sys_config
-                    // ID is likely col 0 or 1. Let's look for 'sys_config'
                     let cloudCfg = null;
                     rows.forEach(r => {
                         const idx = r.indexOf('sys_config');
                         if(idx > -1 && r[idx+1]) {
-                            // Found it! r[idx+1] should be the JSON
                             try { cloudCfg = JSON.parse(r[idx+1]); } catch(e){}
                         }
                     });
@@ -448,8 +517,6 @@
             sync: async (silent) => {
                 if(!silent) ui.loader(true, 'Sincronizando...');
                 
-                // Save Queue first (if implemented, here simple fire/forget)
-                
                 try {
                     const ts = Date.now();
                     const [txtRec, txtCat, txtLog] = await Promise.all([
@@ -467,11 +534,6 @@
                     db.data.logs = cLogs.reverse();
 
                     // Merge: Local overwrites Cloud if dirty/newer
-                    // For V0 simple: 
-                    // 1. Mark all Cloud as clean
-                    // 2. Override with Local if Local exists
-                    // 3. If Local matches Cloud, remove Local (clean)
-                    
                     const newLocal = [];
                     db.data.local.forEach(loc => {
                         const cld = cRecs.find(c => c.id === loc.id);
@@ -716,68 +778,6 @@
                     s.innerHTML += `<option ${n===sel?'selected':''}>${n}</option>`;
                     f.innerHTML += `<option>${n}</option>`;
                 });
-            }
-        };
-
-        const utils = {
-            sha256: async (s) => {
-                const b = new TextEncoder().encode(s);
-                const h = await crypto.subtle.digest('SHA-256', b);
-                return Array.from(new Uint8Array(h)).map(x => x.toString(16).padStart(2,'0')).join('');
-            },
-            parse_form_link: (url, map) => {
-                try {
-                    const base = url.split('/viewform')[0] + '/formResponse';
-                    const params = new URLSearchParams(url.split('?')[1]);
-                    const entries = {};
-                    for (let [k, t] of Object.entries(map)) {
-                        params.forEach((v, pk) => { if (v.trim() === t) entries[k] = pk; });
-                    }
-                    return { base, entries };
-                } catch { return null; }
-            },
-            send_form: async (ep, d) => {
-                const fd = new URLSearchParams();
-                for(let [k, id] of Object.entries(ep.entries)) { 
-                    let v = d[k]; if(v===true)v='True'; if(v===false)v='False'; if(v===undefined)v='';
-                    fd.append(id, v);
-                }
-                await fetch(ep.url, { method: 'POST', mode: 'no-cors', body: fd });
-            },
-            proc_csv: (txt, type) => {
-                const lines = txt.split('\n'), res = [];
-                lines.forEach(l => {
-                    if(!l.trim()) return;
-                    const r = l.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
-                    // Detect ID col based on pattern: r... or c... or sys...
-                    let idIdx = -1;
-                    r.forEach((cell, i) => { if((type==='rec' && /^r\d+/.test(cell)) || (type==='cat' && (/^[cs]\d+|sys_/.test(cell))) || (type==='log' && cell.includes('SUCESSO'))) idIdx = i; });
-                    
-                    if(idIdx > -1) {
-                       if(type==='rec') res.push({id:r[idIdx], titulo:r[idIdx+1], data:r[idIdx+2], hora:r[idIdx+3], valor:r[idIdx+4], cat:r[idIdx+5], rec:r[idIdx+6], status:r[idIdx+7], det:r[idIdx+8], ts:r[idIdx+9], del:r[idIdx+10]});
-                       if(type==='cat') res.push({id:r[idIdx], nome:r[idIdx+1], ts:r[idIdx+2], del:r[idIdx+3]});
-                    }
-                    if(type==='log' && r.length>=3) res.push({status:r[0], data:r[1], agent:r[2]});
-                });
-                return res;
-            },
-            get_date: (p, ws) => {
-                const h=new Date(); h.setHours(0,0,0,0); const e=new Date(); e.setHours(23,59,59,999);
-                const add=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
-                const stW=(d)=>{const x=new Date(d);const diff=(x.getDay()<ws?7:0)+x.getDay()-ws;x.setDate(x.getDate()-diff);return x;};
-                if(p==='hoje') return {start:h,end:e};
-                if(p==='ontem') return {start:add(h,-1),end:add(e,-1)};
-                if(p==='amanha') return {start:add(h,1),end:add(e,1)};
-                if(p==='semana_atual') {const s=stW(h); return {start:s,end:add(s,6)};}
-                if(p==='semana_passada') {const s=add(stW(h),-7); return {start:s,end:add(s,6)};}
-                if(p==='semana_vem') {const s=add(stW(h),7); return {start:s,end:add(s,6)};}
-                if(p==='mes_atual') return {start:new Date(h.getFullYear(),h.getMonth(),1),end:new Date(h.getFullYear(),h.getMonth()+1,0)};
-                if(p==='mes_passado') return {start:new Date(h.getFullYear(),h.getMonth()-1,1),end:new Date(h.getFullYear(),h.getMonth(),0)};
-                if(p==='mes_vem') return {start:new Date(h.getFullYear(),h.getMonth()+1,1),end:new Date(h.getFullYear(),h.getMonth()+2,0)};
-                if(p==='ano_atual') return {start:new Date(h.getFullYear(),0,1),end:new Date(h.getFullYear(),11,31)};
-                if(p==='ano_passado') return {start:new Date(h.getFullYear()-1,0,1),end:new Date(h.getFullYear()-1,11,31)};
-                if(p==='ano_vem') return {start:new Date(h.getFullYear()+1,0,1),end:new Date(h.getFullYear()+1,11,31)};
-                return null;
             }
         };
 
