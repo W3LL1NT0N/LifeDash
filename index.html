@@ -3,83 +3,837 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Life Dash v6.2 | Entrada</title>
+    <title>Life Dash v7 | Ton</title>
+    <!-- Fontes e Ícones -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <style>
+        /* --- CSS EMBUTIDO --- */
+        :root {
+            --bg-body: #f8fafc;
+            --bg-surface: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #0f172a;
+            --text-sec: #64748b;
+            --fin: #0ea5e9; /* Azul */
+            --org: #8b5cf6; /* Roxo */
+            --ok: #10b981;
+            --warn: #f59e0b;
+            --err: #ef4444;
+            --dark: #1e293b;
+            --radius: 8px;
+            --header-h: 60px;
+            --sidebar-w: 280px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            font-family: 'Noto Sans', sans-serif;
+            background: var(--bg-body); color: var(--text-main);
+            font-size: 14px; height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        /* UTILITÁRIOS */
+        .hidden { display: none !important; }
+        .screen { display: none; width: 100%; height: 100%; flex-direction: column; overflow-y: auto; background: var(--bg-body); }
+        .screen.active { display: flex; animation: fade_in 0.2s ease-out; }
+        @keyframes fade_in { from { opacity: 0; } to { opacity: 1; } }
+
+        /* TELA DE SETUP & LOGIN */
+        .auth-container { max-width: 600px; margin: 2rem auto; padding: 1.5rem; }
+        .auth-card { background: var(--bg-surface); padding: 2rem; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        
+        .setup-block { background: #f1f5f9; padding: 1.5rem; border-radius: var(--radius); margin-bottom: 2rem; border: 1px solid var(--border); }
+        .block-header { font-weight: 700; font-size: 1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; color: var(--dark); }
+        .tag-box { font-family: monospace; font-size: 0.75rem; background: #e2e8f0; padding: 0.8rem; border-radius: 6px; margin-bottom: 1rem; color: var(--text-main); word-break: break-all; border-left: 3px solid var(--fin); }
+        .tag-label { font-weight: 700; display: block; margin-bottom: 0.3rem; color: var(--text-sec); font-size: 0.7rem; text-transform: uppercase; }
+
+        .inp-label { display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-sec); margin: 0.5rem 0 0.3rem; text-transform: uppercase; }
+        .input-std { width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.95rem; background: #fff; color: var(--text-main); }
+        .input-std:focus { border-color: var(--fin); }
+
+        .btn { width: 100%; padding: 0.9rem; border-radius: var(--radius); font-weight: 700; cursor: pointer; border: none; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: 0.2s; }
+        .btn-primary { background: var(--dark); color: #fff; }
+        .btn-ghost { background: transparent; color: var(--text-sec); border: 1px solid var(--border); }
+        .btn-danger { background: #fee2e2; color: var(--err); }
+
+        /* HEADER APP */
+        header { height: var(--header-h); background: var(--bg-surface); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; padding: 0 1rem; flex-shrink: 0; z-index: 20; }
+        .h-title { font-weight: 700; font-size: 1.1rem; color: var(--dark); }
+        .btn-icon { background: transparent; border: none; font-size: 1.5rem; padding: 0.5rem; cursor: pointer; color: var(--text-sec); border-radius: 50%; }
+        .btn-icon:hover { color: var(--text-main); background: var(--bg-body); }
+
+        /* FILTROS */
+        .filters-bar { background: var(--bg-surface); border-bottom: 1px solid var(--border); padding: 0.5rem 1rem; display: none; gap: 0.5rem; flex-wrap: wrap; }
+        .filters-bar.open { display: flex; }
+        .f-input { padding: 0.5rem 1rem; border: 1px solid var(--border); border-radius: 20px; font-size: 0.85rem; background: var(--bg-body); }
+        .f-search { flex: 1; min-width: 150px; }
+
+        /* KPI */
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; padding: 1rem; }
+        .kpi-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; display: flex; flex-direction: column; }
+        .kpi-fin { border-top: 4px solid var(--fin); } .kpi-org { border-top: 4px solid var(--org); }
+        .kpi-val { font-size: 1.4rem; font-weight: 700; font-family: monospace; margin: 0.5rem 0; }
+        .kpi-lbl { font-size: 0.75rem; font-weight: 700; color: var(--text-sec); text-transform: uppercase; }
+
+        /* LISTA */
+        .list-container { flex: 1; overflow-y: auto; padding: 0 1rem 5rem; }
+        .list-header { font-size: 0.8rem; font-weight: 700; color: var(--text-sec); margin: 1rem 0 0.5rem; display: flex; justify-content: space-between; }
+
+        .row { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; margin-bottom: 0.5rem; display: grid; grid-template-columns: 24px 1fr auto; align-items: center; gap: 1rem; position: relative; overflow: hidden; }
+        .row.divergent { border-left: 4px solid var(--warn); } /* DIVERGENTE */
+
+        .r-check { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--border); cursor: pointer; display: grid; place-items: center; }
+        .r-check.checked { background: var(--ok); border-color: var(--ok); }
+        .r-check.checked::after { content: '✓'; color: white; font-weight: bold; font-size: 14px; }
+
+        .r-title { font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .r-meta { font-size: 0.75rem; color: var(--text-sec); display: flex; gap: 0.5rem; align-items: center; }
+        .r-tag { background: var(--bg-body); padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; }
+        .r-val { font-family: monospace; font-weight: 700; font-size: 0.95rem; }
+
+        /* MODAL */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+        .modal-overlay.open { display: flex; }
+        .modal { background: var(--bg-surface); width: 95%; max-width: 500px; padding: 0; border-radius: 12px; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; }
+        .modal-header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .modal-title { font-weight: 700; font-size: 1.1rem; }
+        .modal-body { padding: 1.5rem; }
+        .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-body); }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .form-grp { margin-bottom: 1rem; }
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border); transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        input:checked + .slider { background-color: var(--ok); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* DRAWER & FAB */
+        .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; display: none; }
+        .drawer-overlay.open { display: block; }
+        aside { position: fixed; top: 0; left: 0; bottom: 0; width: var(--sidebar-w); background: var(--bg-surface); border-right: 1px solid var(--border); z-index: 50; transform: translateX(-100%); transition: 0.3s; padding: 1.5rem; display: flex; flex-direction: column; }
+        aside.open { transform: translateX(0); }
+        .nav-btn { width: 100%; padding: 0.8rem; text-align: left; background: none; border: none; color: var(--text-sec); font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.8rem; border-radius: var(--radius); }
+        .nav-btn.active { background: var(--bg-body); color: var(--dark); font-weight: 700; }
+        .fab { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; background: var(--dark); color: #fff; border-radius: 50%; display: grid; place-items: center; font-size: 1.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); cursor: pointer; z-index: 30; }
+
+        /* LOADER & LOGS */
+        #loader { position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 200; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 1rem; }
+        .log-row { font-family: monospace; font-size: 0.8rem; padding: 0.5rem; border-bottom: 1px solid var(--border); display: flex; gap: 1rem; }
+        .log-ok { color: var(--ok); } .log-fail { color: var(--err); }
+        .cat-item { display: flex; justify-content: space-between; padding: 0.8rem; background: var(--bg-surface); border: 1px solid var(--border); margin-bottom: 0.5rem; border-radius: var(--radius); }
+    </style>
 </head>
 <body>
-    <div id="loader"><i class="ph ph-spinner ph-spin" style="font-size: 2.5rem; color: var(--dark);"></i><div id="loader_msg" style="font-weight: 600; color: var(--text-sec);">Verificando...</div></div>
 
-    <!-- 1. SETUP -->
+    <!-- LOADER -->
+    <div id="loader"><i class="ph ph-spinner ph-spin" style="font-size: 2.5rem; color: var(--dark);"></i><div style="font-weight: 600;">Carregando...</div></div>
+
+    <!-- 1. TELA SETUP (NOVO USUÁRIO) -->
     <div id="screen_setup" class="screen">
-        <div class="center-box">
-            <h2 style="margin-bottom: 0.5rem;">Configuração</h2>
-            <p style="color: var(--text-sec); margin-bottom: 2rem;">Conecte seus Forms.</p>
+        <div class="auth-container">
+            <h1 style="text-align: center; margin-bottom: 2rem;">Configuração Inicial</h1>
+            <p style="color: var(--text-sec); margin-bottom: 2rem;">Preencha os dados para conectar seu banco de dados (Google).</p>
 
-            <div class="setup-card">
-                <div class="block-title"><i class="ph ph-database"></i> 1. Registros</div>
-                <span class="field-label">Form Link</span> <input type="text" id="cfg_form_rec" class="setup-input">
-                <span class="field-label">CSV Link</span> <input type="text" id="cfg_csv_rec" class="setup-input">
-            </div>
-            <div class="setup-card">
-                <div class="block-title"><i class="ph ph-list-checks"></i> 2. Listas/Token</div>
-                <span class="field-label">Form Link</span> <input type="text" id="cfg_form_cat" class="setup-input">
-                <span class="field-label">CSV Link</span> <input type="text" id="cfg_csv_cat" class="setup-input">
-            </div>
-            <div class="setup-card">
-                <div class="block-title"><i class="ph ph-scroll"></i> 3. Logs</div>
-                <span class="field-label">Form Link</span> <input type="text" id="cfg_form_log" class="setup-input">
-                <span class="field-label">CSV Link</span> <input type="text" id="cfg_csv_log" class="setup-input">
-            </div>
+            <div class="auth-card">
+                <h3 style="margin-bottom: 1rem;">1. Credenciais de Acesso</h3>
+                <div class="form-group">
+                    <span class="inp-label">Usuário</span>
+                    <input type="text" id="set_user" class="input-std">
+                </div>
+                <div class="form-group" style="margin-bottom: 2rem;">
+                    <span class="inp-label">Senha</span>
+                    <input type="password" id="set_pass" class="input-std">
+                </div>
 
-            <button class="btn-full" onclick="iniciar_diagnostico_setup()">CONECTAR</button>
-            <div id="setup_diag" class="diag-list" style="display:none;"></div>
+                <h3 style="margin-bottom: 1rem;">2. Conexões Google</h3>
+                
+                <!-- BLOCO 1: REGISTROS -->
+                <div class="setup-block">
+                    <div class="block-header"><i class="ph ph-database"></i> Registros (Principal)</div>
+                    <div class="tag-box">
+                        <span class="tag-label">Use estas TAGS nos campos do Form:</span>
+                        TAG_ID, TAG_TITULO, TAG_DATA, TAG_HORA, TAG_VALOR, TAG_CAT, TAG_REC, TAG_STATUS, TAG_DET, TAG_TS, TAG_DEL
+                    </div>
+                    <span class="inp-label">Link do Form (Preenchido)</span>
+                    <input type="text" id="l_form_rec" class="input-std">
+                    <span class="inp-label">Link da Planilha (CSV)</span>
+                    <input type="text" id="l_csv_rec" class="input-std">
+                </div>
+
+                <!-- BLOCO 2: LISTAS -->
+                <div class="setup-block">
+                    <div class="block-header"><i class="ph ph-list-checks"></i> Listas (Categorias)</div>
+                    <div class="tag-box">
+                        <span class="tag-label">TAGS:</span>
+                        TAG_ID, TAG_NOME, TAG_TS, TAG_DEL
+                    </div>
+                    <span class="inp-label">Link do Form</span>
+                    <input type="text" id="l_form_cat" class="input-std">
+                    <span class="inp-label">Link da Planilha (CSV)</span>
+                    <input type="text" id="l_csv_cat" class="input-std">
+                </div>
+
+                <!-- BLOCO 3: LOGS -->
+                <div class="setup-block">
+                    <div class="block-header"><i class="ph ph-scroll"></i> Logs de Sistema</div>
+                    <div class="tag-box">
+                        <span class="tag-label">TAGS:</span>
+                        TAG_STATUS, TAG_DATA, TAG_AGENT, TAG_SCREEN, TAG_IP
+                    </div>
+                    <span class="inp-label">Link do Form</span>
+                    <input type="text" id="l_form_log" class="input-std">
+                    <span class="inp-label">Link da Planilha (CSV)</span>
+                    <input type="text" id="l_csv_log" class="input-std">
+                </div>
+
+                <button class="btn btn-primary" onclick="sys.do_setup()">SALVAR E ENTRAR</button>
+                <button class="btn btn-ghost" onclick="sys.goto('login')" style="margin-top: 1rem;">Já tenho cadastro</button>
+            </div>
         </div>
     </div>
 
-    <!-- 2. REGISTRO TOKEN -->
-    <div id="screen_register" class="screen">
-        <div class="center-box">
-            <h1><i class="ph ph-shield-plus"></i></h1>
-            <h2>Nova Senha Mestra</h2>
-            <input type="password" id="reg_pass" class="setup-input" placeholder="Senha" style="text-align:center; letter-spacing:4px;">
-            <input type="password" id="reg_pass_conf" class="setup-input" placeholder="Confirmar" style="text-align:center; letter-spacing:4px;">
-            <button class="btn-full" id="btn_criar_token" onclick="registrar_token()">CRIAR</button>
-        </div>
-    </div>
-
-    <!-- 3. WAIT -->
-    <div id="screen_wait" class="screen">
-        <div class="center-box">
-            <h1 style="color: var(--fin);"><i class="ph ph-arrows-clockwise ph-spin"></i></h1>
-            <h2>Sincronizando...</h2>
-            <div id="wait_diag" class="diag-list">
-                <div class="diag-item"><div class="d-icon d-ok"><i class="ph ph-check-circle"></i></div><span>Enviado</span></div>
-                <div class="diag-item"><div class="d-icon d-load"><i class="ph ph-spinner"></i></div><span>Aguardando Google (<span id="try_count">1</span>)...</span></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 4. LOGIN -->
+    <!-- 2. TELA LOGIN (USUÁRIO EXISTENTE) -->
     <div id="screen_login" class="screen">
-        <div class="center-box">
-            <h1 style="margin-bottom: 2rem;"><i class="ph ph-lock-key"></i></h1>
-            <input type="password" id="login_pass" class="setup-input" placeholder="Senha" style="text-align: center; letter-spacing: 4px; font-size: 1.2rem;" onkeyup="if(event.key==='Enter') auth()">
-            <button class="btn-full" onclick="auth()">ENTRAR</button>
-            <p id="login_err" style="color: var(--err); margin-top: 1rem; font-size: 0.8rem;"></p>
-            <button class="btn-link" onclick="hard_reset()">Resetar Tudo</button>
+        <div class="auth-container" style="max-width: 400px; margin-top: 10vh;">
+            <div class="auth-card" style="text-align: center;">
+                <h1 style="margin-bottom: 2rem;"><i class="ph ph-lock-key"></i> Login</h1>
+                
+                <div class="form-group" style="text-align: left;">
+                    <span class="inp-label">Usuário</span>
+                    <input type="text" id="log_user" class="input-std">
+                </div>
+                <div class="form-group" style="text-align: left; margin-bottom: 2rem;">
+                    <span class="inp-label">Senha</span>
+                    <input type="password" id="log_pass" class="input-std">
+                </div>
+
+                <button class="btn btn-primary" onclick="sys.do_login()">ENTRAR</button>
+                <button class="btn btn-ghost" onclick="sys.hard_reset()" style="margin-top: 2rem; color: var(--err); border-color: var(--border);">Apagar Tudo / Resetar</button>
+            </div>
         </div>
     </div>
 
-    <script src="js/utils.js"></script>
-    <script src="js/config.js"></script>
-    <script src="js/auth.js"></script>
+    <!-- 3. TELA APP (DASHBOARD) -->
+    <div id="screen_app" class="screen">
+        <header>
+            <button class="btn-icon" onclick="ui.toggleDrawer()"><i class="ph ph-list"></i></button>
+            <div class="h-title" id="page_title">Dashboard</div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn-icon" onclick="ui.toggleFilters()"><i class="ph ph-funnel"></i></button>
+                <button class="btn-icon" onclick="db.sync()" title="Sincronizar"><i class="ph ph-cloud-arrow-up"></i></button>
+            </div>
+        </header>
+
+        <!-- FILTROS -->
+        <div id="filters_bar" class="filters-bar">
+            <input type="text" id="f_search" class="f-input f-search" placeholder="Buscar..." onkeyup="app.render()">
+            <select id="f_period" class="f-input" onchange="app.render()">
+                <option value="hoje">Hoje</option><option value="ontem">Ontem</option><option value="amanha">Amanhã</option>
+                <option value="semana_atual">Esta Semana</option><option value="semana_passada">Semana Passada</option><option value="semana_vem">Semana Que Vem</option>
+                <option value="mes_atual" selected>Este Mês</option><option value="mes_passado">Mês Passado</option><option value="mes_vem">Mês Que Vem</option>
+                <option value="ano_atual">Este Ano</option><option value="ano_passado">Ano Passado</option><option value="ano_vem">Ano Que Vem</option>
+                <option value="tudo">Tudo</option>
+            </select>
+            <select id="f_cat" class="f-input" onchange="app.render()"><option value="todos">Categoria</option></select>
+        </div>
+
+        <!-- DRAWER -->
+        <div id="drawer_overlay" class="drawer-overlay" onclick="ui.toggleDrawer()"></div>
+        <aside id="drawer">
+            <div style="font-weight:700; font-size:1.2rem; margin-bottom:2rem; display:flex; gap:0.5rem; align-items:center;">
+                <i class="ph ph-squares-four"></i> Life Dash
+            </div>
+            <button class="nav-btn active" onclick="app.nav('dashboard')"><i class="ph ph-chart-pie-slice"></i> Dashboard</button>
+            <div class="nav-group">VISUALIZAR</div>
+            <button class="nav-btn" onclick="app.nav('todos')"><i class="ph ph-list-dashes"></i> Todos</button>
+            <button class="nav-btn" onclick="app.nav('fin')"><i class="ph ph-currency-dollar"></i> Financeiro</button>
+            <button class="nav-btn" onclick="app.nav('org')"><i class="ph ph-check-square"></i> Organizacional</button>
+            <div class="nav-group">SISTEMA</div>
+            <button class="nav-btn" onclick="app.nav('logs')"><i class="ph ph-scroll"></i> Logs</button>
+            <button class="nav-btn" onclick="app.nav('config')"><i class="ph ph-gear"></i> Configurações</button>
+            <button class="nav-btn" onclick="sys.logout()"><i class="ph ph-sign-out"></i> Sair</button>
+        </aside>
+
+        <!-- MAIN -->
+        <main id="main_content">
+            <!-- 3.1 VIEW HOME -->
+            <div id="view_home" class="full-h" style="display: flex; flex-direction: column;">
+                <div id="dash_kpi" class="kpi-grid">
+                    <div class="kpi-card kpi-fin">
+                        <span class="kpi-lbl">Saldo</span><span class="kpi-val" id="k_bal">R$ 0,00</span>
+                        <div style="display:flex; justify-content:space-between; font-size:0.8rem;">
+                            <span style="color:var(--ok)">Ent: <span id="k_in">0</span></span>
+                            <span style="color:var(--err)">Sai: <span id="k_out">0</span></span>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-org">
+                        <span class="kpi-lbl">Tarefas</span><span class="kpi-val" id="k_task">0</span>
+                        <div style="display:flex; justify-content:space-between; font-size:0.8rem;">
+                            <span style="color:var(--warn)">Pend: <span id="k_pend">0</span></span>
+                            <span style="color:var(--ok)">Ok: <span id="k_ok">0</span></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="list-container">
+                    <div class="list-header"><span id="lbl_list">Registros</span><span id="lbl_count">0</span></div>
+                    <div id="list_render"></div>
+                </div>
+                <div class="fab" onclick="ui.openModal()"><i class="ph ph-plus"></i></div>
+            </div>
+
+            <!-- 3.2 VIEW CONFIG -->
+            <div id="view_config" class="full-h hidden" style="padding: 1rem;">
+                <h3 style="margin-bottom: 1rem;">Preferências</h3>
+                <div class="kpi-card" style="margin-bottom: 1.5rem;">
+                    <span class="inp-label">Início da Semana</span>
+                    <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+                        <label><input type="radio" name="ws" id="ws_dom" onclick="sys.save_pref(0)"> Domingo</label>
+                        <label><input type="radio" name="ws" id="ws_seg" onclick="sys.save_pref(1)"> Segunda</label>
+                    </div>
+                </div>
+                <h3 style="margin-bottom: 1rem;">Categorias</h3>
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                    <input type="text" id="new_cat_name" placeholder="Nova..." class="f-input" style="flex:1;">
+                    <button class="btn btn-primary" onclick="db.addCat()" style="width: auto;">Add</button>
+                </div>
+                <div id="conf_cat_list"></div>
+            </div>
+
+            <!-- 3.3 VIEW LOGS -->
+            <div id="view_logs" class="full-h hidden" style="padding: 1rem;">
+                <div id="log_list"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL -->
+    <div id="modal_overlay" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">Registro</span>
+                <button class="btn-icon" onclick="ui.closeModal()"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="e_id">
+                <div class="form-group"><label class="inp-label">Título</label><input type="text" id="e_titulo" class="input-std"></div>
+                <div class="form-grid">
+                    <div class="form-group"><label class="inp-label">Data</label><input type="date" id="e_data" class="input-std"></div>
+                    <div class="form-group"><label class="inp-label">Hora</label><input type="time" id="e_hora" class="input-std"></div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group"><label class="inp-label">Valor (R$)</label><input type="number" id="e_valor" step="0.01" class="input-std" placeholder="0.00"></div>
+                    <div class="form-group"><label class="inp-label">Categoria</label><select id="e_cat" class="input-std"></select></div>
+                </div>
+                <div class="form-grid" style="align-items:center;">
+                    <div class="form-group"><label class="inp-label">Recorrência</label><select id="e_rec" class="input-std"><option value="unica">Única</option><option value="mensal">Mensal</option></select></div>
+                    <div class="form-group">
+                        <label class="inp-label">Concluído</label>
+                        <label class="switch"><input type="checkbox" id="e_status"><span class="slider"></span></label>
+                    </div>
+                </div>
+                <div class="form-group"><label class="inp-label">Detalhes</label><textarea id="e_det" class="input-std" rows="3"></textarea></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="db.saveItem()" style="width: auto;">SALVAR</button>
+                <button class="btn btn-danger" onclick="db.deleteItem()" style="width: auto;">EXCLUIR</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT GIGANTE -->
     <script>
-        // Init Check
-        window.onload = function() {
-            init_setup(); // Defined in config.js
-        }
+        // --- 1. CONFIGURAÇÃO DO SISTEMA ---
+        const sys = {
+            config: {},
+            
+            init: () => {
+                const c = localStorage.getItem('ton_config');
+                if (c) {
+                    sys.config = JSON.parse(c);
+                    // Verifica sessão
+                    const s = sessionStorage.getItem('ton_session');
+                    if (s === 'ok') {
+                        sys.goto('app');
+                        app.init();
+                    } else {
+                        sys.goto('login');
+                    }
+                } else {
+                    sys.goto('setup');
+                }
+            },
+
+            goto: (screen) => {
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                document.getElementById('screen_' + screen).classList.add('active');
+            },
+
+            do_setup: async () => {
+                const user = document.getElementById('set_user').value;
+                const pass = document.getElementById('set_pass').value;
+                
+                const urls = {
+                    rec: { f: document.getElementById('l_form_rec').value, c: document.getElementById('l_csv_rec').value },
+                    cat: { f: document.getElementById('l_form_cat').value, c: document.getElementById('l_csv_cat').value },
+                    log: { f: document.getElementById('l_form_log').value, c: document.getElementById('l_csv_log').value }
+                };
+
+                if(!user || !pass || !urls.rec.f || !urls.rec.c) return alert('Preencha os campos obrigatórios.');
+
+                const maps = {
+                    rec: { id:'TAG_ID', titulo:'TAG_TITULO', data:'TAG_DATA', hora:'TAG_HORA', valor:'TAG_VALOR', cat:'TAG_CAT', rec:'TAG_REC', status:'TAG_STATUS', det:'TAG_DET', ts:'TAG_TS', del:'TAG_DEL' },
+                    cat: { id:'TAG_ID', nome:'TAG_NOME', ts:'TAG_TS', del:'TAG_DEL' },
+                    log: { status:'TAG_STATUS', data:'TAG_DATA', agent:'TAG_AGENT', screen:'TAG_SCREEN', ip:'TAG_IP' }
+                };
+
+                const cfg = { user, pass_hash: await utils.sha256(pass), endpoints: {}, prefs: { week_start: 0 } };
+                
+                for (let k of ['rec','cat','log']) {
+                    const p = utils.parse_form_link(urls[k].f, maps[k]);
+                    if(!p) return alert(`Link do Form ${k.toUpperCase()} inválido ou sem TAGs.`);
+                    cfg.endpoints[k] = { url: p.base, entries: p.entries, csv: urls[k].c };
+                }
+
+                localStorage.setItem('ton_config', JSON.stringify(cfg));
+                sessionStorage.setItem('ton_session', 'ok');
+                sys.init();
+            },
+
+            do_login: async () => {
+                const u = document.getElementById('log_user').value;
+                const p = document.getElementById('log_pass').value;
+                const h = await utils.sha256(p);
+                
+                if (u === sys.config.user && h === sys.config.pass_hash) {
+                    sessionStorage.setItem('ton_session', 'ok');
+                    sys.init();
+                } else {
+                    alert('Dados incorretos.');
+                }
+            },
+
+            logout: () => {
+                sessionStorage.removeItem('ton_session');
+                location.reload();
+            },
+
+            hard_reset: () => {
+                if(confirm('Apagar TUDO?')) { localStorage.clear(); location.reload(); }
+            },
+
+            save_pref: (val) => {
+                sys.config.prefs.week_start = val;
+                localStorage.setItem('ton_config', JSON.stringify(sys.config));
+                app.render();
+            }
+        };
+
+        // --- 2. BANCO DE DADOS & SYNC ---
+        const db = {
+            data: { local: [], cloud: [], merged: [], cats: [], logs: [] },
+            
+            load: async () => {
+                // Local
+                const ld = localStorage.getItem('ton_data');
+                if(ld) db.data.local = JSON.parse(ld);
+                
+                // Cloud Sync (Silent)
+                await db.sync(true);
+            },
+
+            saveItem: () => {
+                const id = document.getElementById('e_id').value || 'r' + Date.now();
+                const titulo = document.getElementById('e_titulo').value;
+                const data = document.getElementById('e_data').value;
+                
+                if(!titulo || !data) return alert('Título e Data obrigatórios.');
+
+                const item = {
+                    id, titulo, data,
+                    hora: document.getElementById('e_hora').value,
+                    valor: document.getElementById('e_valor').value,
+                    cat: document.getElementById('e_cat').value,
+                    rec: document.getElementById('e_rec').value,
+                    status: document.getElementById('e_status').checked ? 'concluido' : 'pendente',
+                    det: document.getElementById('e_det').value,
+                    ts: new Date().toISOString(),
+                    del: 'false',
+                    dirty: true
+                };
+
+                const idx = db.data.local.findIndex(i => i.id === id);
+                if(idx > -1) db.data.local[idx] = item; else db.data.local.push(item);
+                
+                db.persistLocal();
+                ui.closeModal();
+                app.render();
+                
+                // Fire & Forget
+                utils.send_form(sys.config.endpoints.rec, item);
+            },
+
+            toggleStatus: (id) => {
+                const item = db.data.merged.find(i => i.id === id);
+                if(!item) return;
+                const newItem = {...item, dirty: true, ts: new Date().toISOString()};
+                newItem.status = (newItem.status === 'concluido' ? 'pendente' : 'concluido');
+                
+                const idx = db.data.local.findIndex(i => i.id === id);
+                if(idx > -1) db.data.local[idx] = newItem; else db.data.local.push(newItem);
+                
+                db.persistLocal();
+                app.render();
+                utils.send_form(sys.config.endpoints.rec, newItem);
+            },
+
+            deleteItem: () => {
+                if(!confirm('Excluir?')) return;
+                const id = document.getElementById('e_id').value;
+                const item = db.data.merged.find(i => i.id === id);
+                if(item) {
+                    const newItem = {...item, dirty:true, del:'true', ts:new Date().toISOString()};
+                    const idx = db.data.local.findIndex(i => i.id === id);
+                    if(idx > -1) db.data.local[idx] = newItem; else db.data.local.push(newItem);
+                    db.persistLocal();
+                    utils.send_form(sys.config.endpoints.rec, newItem);
+                }
+                ui.closeModal();
+                app.render();
+            },
+
+            addCat: () => {
+                const nome = document.getElementById('new_cat_name').value;
+                if(!nome) return;
+                const item = { id:'c'+Date.now(), nome, ts:new Date().toISOString(), del:'false' };
+                db.data.cats.push(item); // Optimistic
+                document.getElementById('new_cat_name').value = '';
+                app.render_config();
+                utils.send_form(sys.config.endpoints.cat, item);
+            },
+
+            delCat: (id) => {
+                const c = db.data.cats.find(i => i.id === id);
+                if(c) { 
+                    c.del = 'true'; 
+                    app.render_config(); 
+                    utils.send_form(sys.config.endpoints.cat, c);
+                }
+            },
+
+            sync: async (silent) => {
+                if(!silent) ui.loader(true, 'Sincronizando...');
+                try {
+                    const ts = Date.now();
+                    const [txtRec, txtCat, txtLog] = await Promise.all([
+                        fetch(sys.config.endpoints.rec.csv + '&t=' + ts).then(r=>r.text()),
+                        fetch(sys.config.endpoints.cat.csv + '&t=' + ts).then(r=>r.text()),
+                        fetch(sys.config.endpoints.log.csv + '&t=' + ts).then(r=>r.text())
+                    ]);
+
+                    const cRecs = utils.process_csv_recs(txtRec);
+                    const cCats = utils.process_csv_cats(txtCat);
+                    const cLogs = utils.process_csv_logs(txtLog);
+
+                    db.data.cloud = cRecs;
+                    db.data.cats = cCats.length ? cCats : db.data.cats; // Keep default if empty
+                    db.data.logs = cLogs.reverse();
+
+                    // Merge Logic: Remove local if cloud is newer/equal
+                    const newLocal = [];
+                    db.data.local.forEach(loc => {
+                        const cld = cRecs.find(c => c.id === loc.id);
+                        if (cld) {
+                            if (new Date(loc.ts) > new Date(cld.ts)) newLocal.push(loc);
+                        } else newLocal.push(loc);
+                    });
+                    db.data.local = newLocal;
+                    
+                    db.persistLocal();
+                    db.mergeData();
+                } catch(e) { console.log('Sync err', e); }
+                
+                // Seed cats
+                if(db.data.cats.length===0) ['Trabalhos','Contas','Lazer','Saúde'].forEach(c=>db.data.cats.push({id:'c'+Math.random(),nome:c}));
+                
+                if(!silent) ui.loader(false);
+                app.render();
+                app.render_config(); // Update lists
+            },
+
+            mergeData: () => {
+                const map = new Map();
+                db.data.cloud.forEach(i => map.set(i.id, i));
+                db.data.local.forEach(i => map.set(i.id, {...i, dirty: true}));
+                db.data.merged = Array.from(map.values());
+            },
+
+            persistLocal: () => {
+                localStorage.setItem('ton_data', JSON.stringify(db.data.local));
+                db.mergeData();
+            }
+        };
+
+        // --- 3. UI E LÓGICA DE APP ---
+        const app = {
+            view: 'dashboard',
+            
+            init: () => {
+                db.load();
+                // Load Prefs
+                if(sys.config.prefs.week_start !== undefined) {
+                    document.getElementById('ws_dom').checked = sys.config.prefs.week_start === 0;
+                    document.getElementById('ws_seg').checked = sys.config.prefs.week_start === 1;
+                }
+            },
+
+            nav: (view) => {
+                app.view = view;
+                ui.toggleDrawer(false);
+                document.getElementById('page_title').innerText = view.charAt(0).toUpperCase() + view.slice(1);
+                
+                // Hide all sub-views
+                ['view_home','view_config','view_logs'].forEach(v => document.getElementById(v).classList.add('hidden'));
+                
+                if(view === 'config') {
+                    document.getElementById('view_config').classList.remove('hidden');
+                    app.render_config();
+                } else if (view === 'logs') {
+                    document.getElementById('view_logs').classList.remove('hidden');
+                    app.render_logs();
+                } else {
+                    document.getElementById('view_home').classList.remove('hidden');
+                    document.getElementById('dash_kpi').style.display = (view === 'dashboard') ? 'grid' : 'none';
+                    if(view === 'dashboard') document.getElementById('f_period').value = 'hoje';
+                    app.render();
+                }
+            },
+
+            render: () => {
+                const list = document.getElementById('list_render');
+                list.innerHTML = '';
+                
+                let items = db.data.merged.filter(r => String(r.del) !== 'true');
+
+                // Filtros de Contexto
+                if(app.view === 'fin') items = items.filter(r => Number(r.valor) > 0);
+                if(app.view === 'org') items = items.filter(r => !r.valor || Number(r.valor) === 0);
+
+                // Filtros de Barra
+                const term = document.getElementById('f_search').value.toLowerCase();
+                const cat = document.getElementById('f_cat').value;
+                const per = document.getElementById('f_period').value;
+                const st = document.getElementById('f_status') ? document.getElementById('f_status').value : 'todos';
+
+                if(term) items = items.filter(r => (r.titulo||'').toLowerCase().includes(term));
+                if(cat !== 'todos') items = items.filter(r => r.cat === cat);
+                if(st !== 'todos') items = items.filter(r => r.status === st);
+
+                const rng = utils.get_date_filter(per, sys.config.prefs.week_start);
+                if(rng) items = items.filter(r => {
+                    if(!r.data) return false;
+                    const d = new Date(r.data + 'T12:00:00');
+                    return d >= rng.start && d <= rng.end;
+                });
+
+                // Ordenação
+                if(app.view === 'dashboard') items.sort((a,b) => (a.hora||'').localeCompare(b.hora||''));
+                else items.sort((a,b) => (b.data||'').localeCompare(a.data||''));
+
+                // KPI e Count
+                document.getElementById('lbl_count').innerText = items.length;
+                app.calcKPI(items);
+
+                if(items.length === 0) { list.innerHTML = '<div style="padding:2rem;text-align:center;color:#999">Vazio</div>'; return; }
+
+                items.forEach(r => {
+                    const val = Number(r.valor);
+                    const isFin = val > 0;
+                    const vFmt = isFin ? val.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '';
+                    const dBr = (r.data||'').split('-').reverse().join('/');
+                    const stCls = r.status === 'concluido' ? 'checked' : '';
+                    const divCls = r.dirty ? 'row divergent' : 'row';
+
+                    list.innerHTML += `
+                    <div class="${divCls}" onclick="ui.edit('${r.id}')">
+                        <div class="r-check ${stCls}" onclick="event.stopPropagation(); db.toggleStatus('${r.id}')"></div>
+                        <div class="r-main">
+                            <div class="r-title">${r.titulo}</div>
+                            <div class="r-meta"><span class="r-tag">${r.cat}</span> <span>${dBr} ${r.hora?('• '+r.hora):''}</span></div>
+                        </div>
+                        <div class="r-val" style="color:${isFin?'var(--text-main)':'var(--text-sec)'}">${vFmt}</div>
+                    </div>`;
+                });
+            },
+
+            calcKPI: (items) => {
+                let bal=0, in_=0, out=0, task=0, pend=0, ok=0;
+                items.forEach(r => {
+                    const v = Number(r.valor||0);
+                    if(v>0) {
+                        if(['Trabalhos','Receitas'].includes(r.cat)) { in_+=v; bal+=v; }
+                        else { out+=v; bal-=v; }
+                    } else {
+                        task++; if(r.status==='pendente') pend++; else ok++;
+                    }
+                });
+                const txt = (id,v) => document.getElementById(id).innerText = v;
+                const money = (v) => v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+                txt('k_bal', money(bal)); txt('k_in', money(in_)); txt('k_out', money(out));
+                txt('k_task', task); txt('k_pend', pend); txt('k_ok', ok);
+            },
+
+            render_config: () => {
+                const l = document.getElementById('conf_cat_list');
+                l.innerHTML = '';
+                const u = [...new Set(db.data.cats.filter(c=>String(c.del)!=='true').map(c=>c.nome))];
+                u.forEach(n => {
+                    // Find ID for delete
+                    const c = db.data.cats.find(x => x.nome === n);
+                    l.innerHTML += `<div class="cat-item"><span>${n}</span><button onclick="db.delCat('${c.id}')" style="color:var(--err);border:none;background:none;">Excluir</button></div>`;
+                });
+            },
+
+            render_logs: () => {
+                const l = document.getElementById('log_list');
+                l.innerHTML = '';
+                db.data.logs.slice(0,50).forEach(g => {
+                    const cls = g.status.includes('SUCESSO') ? 'log-ok' : 'log-fail';
+                    const d = g.data ? g.data.split('T')[0] : '--';
+                    l.innerHTML += `<div class="log-row"><div class="log-time">${d}</div><div class="${cls}">${g.status}</div></div>`;
+                });
+            }
+        };
+
+        // --- 4. INTERFACE ---
+        const ui = {
+            loader: (s,m) => { document.getElementById('loader').style.display = s ? 'flex' : 'none'; },
+            toggleDrawer: (f) => {
+                const d=document.getElementById('drawer'), o=document.getElementById('drawer_overlay');
+                if(f===false||d.classList.contains('open')){d.classList.remove('open');o.classList.remove('open');}
+                else{d.classList.add('open');o.classList.add('open');}
+            },
+            toggleFilters: () => document.getElementById('filters_bar').classList.toggle('open'),
+            
+            openModal: () => {
+                ['e_id','e_titulo','e_valor','e_hora','e_det'].forEach(i=>document.getElementById(i).value='');
+                document.getElementById('e_data').value = new Date().toISOString().split('T')[0];
+                document.getElementById('e_status').checked = false;
+                ui.popCats();
+                document.getElementById('modal_overlay').classList.add('open');
+            },
+            edit: (id) => {
+                const r = db.data.merged.find(i => i.id === id);
+                if(!r) return;
+                document.getElementById('e_id').value = r.id;
+                document.getElementById('e_titulo').value = r.titulo;
+                document.getElementById('e_data').value = r.data;
+                document.getElementById('e_hora').value = r.hora;
+                document.getElementById('e_valor').value = r.valor;
+                document.getElementById('e_det').value = r.det;
+                document.getElementById('e_rec').value = r.rec || 'unica';
+                document.getElementById('e_status').checked = (r.status === 'concluido');
+                ui.popCats();
+                document.getElementById('e_cat').value = r.cat;
+                document.getElementById('modal_overlay').classList.add('open');
+            },
+            closeModal: () => document.getElementById('modal_overlay').classList.remove('open'),
+            popCats: () => {
+                const s = document.getElementById('e_cat'), f = document.getElementById('f_cat');
+                const fv = f.value;
+                s.innerHTML=''; f.innerHTML='<option value="todos">Categoria</option>';
+                const u = [...new Set(db.data.cats.filter(c=>String(c.del)!=='true').map(c=>c.nome))];
+                u.forEach(n => { s.innerHTML+=`<option>${n}</option>`; f.innerHTML+=`<option>${n}</option>`; });
+                f.value = fv;
+            }
+        };
+
+        // --- 5. UTILS ---
+        const utils = {
+            sha256: async (s) => {
+                const b = new TextEncoder().encode(s);
+                const h = await crypto.subtle.digest('SHA-256', b);
+                return Array.from(new Uint8Array(h)).map(x => x.toString(16).padStart(2,'0')).join('');
+            },
+            parse_form_link: (url, map) => {
+                try {
+                    if (!url.includes('viewform')) return null;
+                    const base = url.split('/viewform')[0] + '/formResponse';
+                    const params = new URLSearchParams(url.split('?')[1]);
+                    const entries = {};
+                    for (let [key, tag] of Object.entries(map)) {
+                        params.forEach((val, pKey) => { if (val.trim() === tag) entries[key] = pKey; });
+                    }
+                    return { base, entries };
+                } catch { return null; }
+            },
+            send_form: async (cfg, data) => {
+                const fd = new URLSearchParams();
+                for(let [key, entryId] of Object.entries(cfg.entries)) { 
+                    let val = data[key];
+                    if (val===undefined||val===null) val='';
+                    if (val===true) val='True'; if (val===false) val='False';
+                    fd.append(entryId, val); 
+                }
+                await fetch(cfg.url, { method: 'POST', mode: 'no-cors', body: fd });
+            },
+            process_csv_recs: (txt) => {
+                const r = utils.parse_csv(txt), res=[];
+                r.forEach(row => {
+                    const i = row.findIndex(c => /^r\d+/.test(c));
+                    if(i>-1 && row[i+1]) res.push({id:row[i], titulo:row[i+1], data:row[i+2], hora:row[i+3], valor:row[i+4], cat:row[i+5], rec:row[i+6], status:row[i+7], det:row[i+8], ts:row[i+9], del:row[i+10]});
+                });
+                return res;
+            },
+            process_csv_cats: (txt) => {
+                const r = utils.parse_csv(txt), res=[];
+                r.forEach(row => {
+                    const i = row.findIndex(c => /^c\d+/.test(c));
+                    if(i>-1) res.push({id:row[i], nome:row[i+1], ts:row[i+2], del:row[i+3]});
+                });
+                return res;
+            },
+            process_csv_logs: (txt) => {
+                // Logs simples
+                const r = utils.parse_csv(txt), res=[];
+                r.forEach(row => { if(row.length>=3) res.push({status:row[0], data:row[1], agent:row[2]}); });
+                return res;
+            },
+            parse_csv: (txt) => {
+                const res=[], lines=txt.split('\n');
+                lines.forEach(l => {
+                    if(!l.trim()) return;
+                    const r = l.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                    res.push(r.map(c => c.trim().replace(/^"|"$/g, '').replace(/""/g, '"')));
+                });
+                return res;
+            },
+            get_date_filter: (p, ws) => {
+                const h=new Date(); h.setHours(0,0,0,0); const e=new Date(); e.setHours(23,59,59,999);
+                const add=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
+                const stW=(d)=>{const x=new Date(d);const diff=(x.getDay()<ws?7:0)+x.getDay()-ws;x.setDate(x.getDate()-diff);return x;};
+                if(p==='hoje') return {start:h,end:e};
+                if(p==='ontem') return {start:add(h,-1),end:add(e,-1)};
+                if(p==='amanha') return {start:add(h,1),end:add(e,1)};
+                if(p==='semana_atual') {const s=stW(h); return {start:s,end:add(s,6)};}
+                if(p==='semana_passada') {const s=add(stW(h),-7); return {start:s,end:add(s,6)};}
+                if(p==='semana_vem') {const s=add(stW(h),7); return {start:s,end:add(s,6)};}
+                if(p==='mes_atual') return {start:new Date(h.getFullYear(),h.getMonth(),1),end:new Date(h.getFullYear(),h.getMonth()+1,0)};
+                if(p==='mes_passado') return {start:new Date(h.getFullYear(),h.getMonth()-1,1),end:new Date(h.getFullYear(),h.getMonth(),0)};
+                if(p==='mes_vem') return {start:new Date(h.getFullYear(),h.getMonth()+1,1),end:new Date(h.getFullYear(),h.getMonth()+2,0)};
+                if(p==='ano_atual') return {start:new Date(h.getFullYear(),0,1),end:new Date(h.getFullYear(),11,31)};
+                if(p==='ano_passado') return {start:new Date(h.getFullYear()-1,0,1),end:new Date(h.getFullYear()-1,11,31)};
+                if(p==='ano_vem') return {start:new Date(h.getFullYear()+1,0,1),end:new Date(h.getFullYear()+1,11,31)};
+                return null;
+            }
+        };
+
+        // BOOT
+        window.onload = sys.init;
     </script>
 </body>
 </html>
