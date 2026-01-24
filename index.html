@@ -2,786 +2,607 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LIDA Journal v0</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NN Planner | Ton Alexandre</title>
     
-    <style>
-        :root {
-            --bg-body: #f8fafc; --bg-surface: #ffffff; --border: #e2e8f0;
-            --text-main: #0f172a; --text-sec: #64748b;
-            --fin: #0ea5e9; --org: #8b5cf6;
-            --ok: #10b981; --warn: #f59e0b; --err: #ef4444; --dark: #1e293b;
-            --radius: 8px; --header-h: 60px; --sidebar-w: 280px;
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Google Fonts: Inter (Sans) & JetBrains Mono (Mono) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        zinc: {
+                            50: '#fafafa',
+                            100: '#f4f4f5',
+                            200: '#e4e4e7',
+                            300: '#d4d4d8',
+                            400: '#a1a1aa',
+                            500: '#71717a',
+                            800: '#27272a',
+                            900: '#18181b',
+                        }
+                    }
+                }
+            }
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Noto Sans', sans-serif; background: var(--bg-body); color: var(--text-main); font-size: 14px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        .hidden { display: none !important; }
-        .screen { display: none; width: 100%; height: 100%; flex-direction: column; overflow-y: auto; background: var(--bg-body); }
-        .screen.active { display: flex; animation: fade_in 0.2s ease-out; }
-        @keyframes fade_in { from { opacity: 0; } to { opacity: 1; } }
-
-        /* AUTH & SETUP */
-        .center-box { max-width: 600px; margin: 2rem auto; padding: 1.5rem; }
-        .auth-card { background: var(--bg-surface); padding: 2rem; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-        .setup-block { background: #f1f5f9; padding: 1.5rem; border-radius: var(--radius); margin-bottom: 2rem; border: 1px solid var(--border); }
-        .block-header { font-weight: 700; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; color: var(--dark); }
-        .inp-label { display: block; font-size: 0.75rem; font-weight: 700; color: var(--text-sec); margin: 0.5rem 0 0.3rem; text-transform: uppercase; }
-        .input-std { width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.95rem; background: #fff; color: var(--text-main); }
-        .btn { width: 100%; padding: 0.9rem; border-radius: var(--radius); font-weight: 700; cursor: pointer; border: none; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: 0.2s; }
-        .btn-primary { background: var(--dark); color: #fff; }
-        .btn-ghost { background: transparent; color: var(--text-sec); border: 1px solid var(--border); }
-        .tag-box { font-family: monospace; font-size: 0.7rem; background: #e2e8f0; padding: 0.5rem; border-radius: 4px; color: var(--text-main); word-break: break-all; margin-bottom: 0.5rem; }
-
-        /* APP UI */
-        header { height: var(--header-h); background: var(--bg-surface); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; padding: 0 1rem; flex-shrink: 0; z-index: 20; }
-        .h-title { font-weight: 700; font-size: 1.1rem; color: var(--dark); }
-        .btn-icon { background: transparent; border: none; font-size: 1.5rem; padding: 0.5rem; cursor: pointer; color: var(--text-sec); border-radius: 50%; }
-        .filters-bar { background: var(--bg-surface); border-bottom: 1px solid var(--border); padding: 0.5rem 1rem; display: none; gap: 0.5rem; flex-wrap: wrap; }
-        .filters-bar.open { display: flex; }
-        .f-input { padding: 0.5rem 1rem; border: 1px solid var(--border); border-radius: 20px; font-size: 0.85rem; background: var(--bg-body); }
-        .f-search { flex: 1; min-width: 150px; }
-
-        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; padding: 1rem; }
-        .kpi-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; display: flex; flex-direction: column; }
-        .kpi-fin { border-top: 4px solid var(--fin); } .kpi-org { border-top: 4px solid var(--org); }
-        .kpi-val { font-size: 1.4rem; font-weight: 700; font-family: monospace; margin: 0.5rem 0; }
-        .kpi-lbl { font-size: 0.75rem; font-weight: 700; color: var(--text-sec); text-transform: uppercase; }
-
-        .list-container { flex: 1; overflow-y: auto; padding: 0 1rem 5rem; }
-        .list-header { font-size: 0.8rem; font-weight: 700; color: var(--text-sec); margin: 1rem 0 0.5rem; display: flex; justify-content: space-between; }
-        .row { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; margin-bottom: 0.5rem; display: grid; grid-template-columns: 24px 1fr auto; align-items: center; gap: 1rem; position: relative; overflow: hidden; }
-        .row.divergent { border-left: 4px solid var(--warn); }
-        .r-check { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--border); cursor: pointer; display: grid; place-items: center; }
-        .r-check.checked { background: var(--ok); border-color: var(--ok); }
-        .r-check.checked::after { content: '✓'; color: white; font-weight: bold; font-size: 14px; }
-        .r-title { font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .r-meta { font-size: 0.75rem; color: var(--text-sec); display: flex; gap: 0.5rem; align-items: center; }
-        .r-tag { background: var(--bg-body); padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; }
-        .r-val { font-family: monospace; font-weight: 700; font-size: 0.95rem; }
-
-        .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; display: none; }
-        .drawer-overlay.open { display: block; }
-        aside { position: fixed; top: 0; left: 0; bottom: 0; width: var(--sidebar-w); background: var(--bg-surface); border-right: 1px solid var(--border); z-index: 50; transform: translateX(-100%); transition: 0.3s; padding: 1.5rem; display: flex; flex-direction: column; }
-        aside.open { transform: translateX(0); }
-        .nav-btn { width: 100%; padding: 0.8rem; text-align: left; background: none; border: none; color: var(--text-sec); font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.8rem; border-radius: var(--radius); }
-        .nav-btn.active { background: var(--bg-body); color: var(--dark); font-weight: 700; }
-        .fab { position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; background: var(--dark); color: #fff; border-radius: 50%; display: grid; place-items: center; font-size: 1.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); cursor: pointer; z-index: 30; }
-
-        #loader { position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 200; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 1rem; }
-        .log-row { font-family: monospace; font-size: 0.8rem; padding: 0.5rem; border-bottom: 1px solid var(--border); display: flex; gap: 1rem; }
-        .log-ok { color: var(--ok); } .log-fail { color: var(--err); }
-        
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
-        .modal-overlay.open { display: flex; }
-        .modal { background: var(--bg-surface); width: 95%; max-width: 500px; padding: 0; border-radius: 12px; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; }
-        .modal-header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-        .modal-body { padding: 1.5rem; }
-        .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-body); }
-        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border); transition: .4s; border-radius: 34px; }
-        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        input:checked + .slider { background-color: var(--ok); }
-        input:checked + .slider:before { transform: translateX(20px); }
+    </script>
+    <style>
+        body { background-color: #fafafa; }
+        /* Remove scrollbar for clean look but keep functionality */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e4e4e7; border-radius: 2px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
+    <div id="root"></div>
 
-    <div id="loader"><i class="ph ph-spinner ph-spin" style="font-size: 2.5rem; color: var(--dark);"></i><div style="font-weight: 600;">Carregando...</div></div>
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useCallback } = React;
 
-    <!-- 1. SETUP (NOVA CONEXÃO) -->
-    <div id="screen_setup" class="screen">
-        <div class="center-box">
-            <h1 style="text-align: center; margin-bottom: 2rem;">Setup LIDA v0</h1>
+        // --- ICONS (Lucide) ---
+        const Icon = ({ name, size = 16, className = "" }) => {
+            useEffect(() => {
+                if (window.lucide) window.lucide.createIcons();
+            }, [name]);
+            return <i data-lucide={name} width={size} height={size} className={className}></i>;
+        };
+
+        // --- DATA & LOGIC MODULE ---
+        
+        const STORAGE_KEY = 'nn_planner_config';
+
+        // Mapeamento fixo conforme specs
+        const FORM_MAP = {
+            id: 'entry.1839248024',
+            titulo: 'entry.1045175554',
+            data_prevista: 'entry.760139310',
+            data_realizada: 'entry.1447613388',
+            valor: 'entry.1805224440',
+            categoria: 'entry.1854217840',
+            status: 'entry.1060678570',
+            deleted: 'entry.deleted_flag_placeholder' // Não tem no form original, gerenciado via status 'void'
+        };
+
+        const PARAMS_MAP = {
+            label: 'entry.1097139386',
+            value: 'entry.1455409067'
+        };
+
+        // CSV Parsing Helper
+        const parseCSV = (text) => {
+            const lines = text.split('\n').filter(l => l.trim() !== '');
+            const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
             
-            <div class="auth-card">
-                <h3 style="margin-bottom: 1rem;">Acesso & Personalização</h3>
-                <div class="form-group"><span class="inp-label">Usuário</span><input type="text" id="set_user" class="input-std"></div>
-                <div class="form-group" style="margin-bottom: 2rem;"><span class="inp-label">Senha</span><input type="password" id="set_pass" class="input-std"></div>
-
-                <!-- LISTAS (CÉREBRO DO SISTEMA) -->
-                <div class="setup-block">
-                    <div class="block-header"><i class="ph ph-list-checks"></i> 1. Banco de Listas & Config (Obrigatório)</div>
-                    <div class="tag-box">TAGS: TAG_ID, TAG_NOME, TAG_TS, TAG_DEL</div>
-                    <span class="inp-label">Link Form (Preenchido)</span><input type="text" id="l_form_cat" class="input-std">
-                    <span class="inp-label">Link Planilha (CSV)</span><input type="text" id="l_csv_cat" class="input-std">
-                </div>
-
-                <!-- REGISTROS -->
-                <div class="setup-block">
-                    <div class="block-header"><i class="ph ph-database"></i> 2. Banco de Registros</div>
-                    <div class="tag-box">TAGS: TAG_ID, TAG_TITULO, TAG_DATA, TAG_HORA, TAG_VALOR, TAG_CAT, TAG_REC, TAG_STATUS, TAG_DET, TAG_TS, TAG_DEL</div>
-                    <span class="inp-label">Link Form</span><input type="text" id="l_form_rec" class="input-std">
-                    <span class="inp-label">Link CSV</span><input type="text" id="l_csv_rec" class="input-std">
-                </div>
-
-                <!-- LOGS -->
-                <div class="setup-block">
-                    <div class="block-header"><i class="ph ph-scroll"></i> 3. Banco de Logs</div>
-                    <div class="tag-box">TAGS: TAG_STATUS, TAG_DATA, TAG_AGENT, TAG_SCREEN, TAG_IP</div>
-                    <span class="inp-label">Link Form</span><input type="text" id="l_form_log" class="input-std">
-                    <span class="inp-label">Link CSV</span><input type="text" id="l_csv_log" class="input-std">
-                </div>
-
-                <button class="btn btn-primary" onclick="sys.do_setup()">SALVAR CONFIG NA NUVEM</button>
-                <button class="btn btn-ghost" onclick="sys.goto('login')" style="margin-top: 1rem;">Já fiz isso antes</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 2. LOGIN (JÁ TENHO CONFIG NA NUVEM) -->
-    <div id="screen_login" class="screen">
-        <div class="center-box" style="margin-top: 10vh;">
-            <div class="auth-card" style="text-align: center;">
-                <h1 style="margin-bottom: 2rem;"><i class="ph ph-lock-key"></i> LIDA Journal</h1>
-                <p style="color:var(--text-sec); margin-bottom:1rem; font-size:0.85rem;">Insira o link da planilha de Listas para carregar suas configurações.</p>
+            return lines.slice(1).map(line => {
+                // Regex complexa para lidar com vírgulas dentro de aspas no CSV
+                const values = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+                // Fallback simples se o regex falhar em linhas complexas
+                const splitValues = line.split(',');
                 
-                <div class="form-group" style="text-align: left;">
-                    <span class="inp-label">Link CSV Listas</span>
-                    <input type="text" id="log_csv_link" class="input-std" placeholder="https://docs.google.com/...output=csv">
-                </div>
+                const entry = {};
+                headers.forEach((h, i) => {
+                    // Limpeza básica de aspas
+                    let val = (values[i] || splitValues[i] || '').replace(/^"|"$/g, '').trim();
+                    entry[h] = val;
+                });
+                return entry;
+            });
+        };
+
+        // The "Reduce" Algorithm
+        const processRecords = (rawRecords) => {
+            // 1. Group by ID (timestamp)
+            const groups = {};
+            rawRecords.forEach(r => {
+                // Tenta achar a coluna que corresponde ao ID (timestamp). 
+                // No Google Sheets, a primeira col é 'Carimbo de data/hora', mas usamos o campo ID salvo.
+                // Precisamos identificar qual coluna é o ID com base no mapeamento ou nome.
+                // Assumindo que no CSV o header do ID venha como mapeado ou 'registro_id'
+                // Procurando chaves comuns
+                const idKey = Object.keys(r).find(k => k.includes('id') || k.includes('1839248024')); 
+                const id = r[idKey];
                 
-                <div class="form-group" style="text-align: left;">
-                    <span class="inp-label">Usuário</span>
-                    <input type="text" id="log_user" class="input-std">
+                if (!id) return;
+                
+                if (!groups[id]) groups[id] = [];
+                groups[id].push(r);
+            });
+
+            // 2. Reduce to Latest & 3. Filter Void
+            const cleanList = [];
+            
+            Object.values(groups).forEach(group => {
+                // Ordena pelo Timestamp do Google (primeira coluna geralmente)
+                // Assumindo formato DD/MM/YYYY HH:mm:ss ou YYYY-MM-DD
+                const sorted = group.sort((a, b) => {
+                    const timeA = Object.values(a)[0]; // Carimbo data/hora
+                    const timeB = Object.values(b)[0];
+                    return new Date(timeA) - new Date(timeB);
+                });
+                
+                const latest = sorted[sorted.length - 1];
+                
+                // Mapear de volta para nomes amigáveis
+                // Precisamos encontrar as chaves corretas baseadas no header do CSV
+                // Hack: Vamos procurar valores nas colunas
+                const mapped = {
+                    original_id: latest[Object.keys(latest).find(k => k.includes('id') || k.includes('1839248024'))],
+                    title: latest[Object.keys(latest).find(k => k.includes('titulo') || k.includes('1045175554'))] || 'Sem título',
+                    date_prev: latest[Object.keys(latest).find(k => k.includes('prevista') || k.includes('760139310'))],
+                    value: parseFloat((latest[Object.keys(latest).find(k => k.includes('valor') || k.includes('1805224440'))] || '0').replace(',', '.')),
+                    category: latest[Object.keys(latest).find(k => k.includes('categoria') || k.includes('1854217840'))],
+                    status: latest[Object.keys(latest).find(k => k.includes('status') || k.includes('1060678570'))],
+                    type: (latest[Object.keys(latest).find(k => k.includes('valor') || k.includes('1805224440'))] || '0') == 0 ? 'organizational' : 'financial'
+                };
+
+                if (mapped.status !== 'void' && mapped.status !== 'deleted') {
+                    cleanList.push(mapped);
+                }
+            });
+
+            return cleanList.sort((a, b) => new Date(a.date_prev) - new Date(b.date_prev));
+        };
+
+        const postToForm = async (url, dataMap) => {
+            const formData = new URLSearchParams();
+            for (const [key, value] of Object.entries(dataMap)) {
+                formData.append(key, value);
+            }
+            
+            try {
+                await fetch(url, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formData
+                });
+                return true;
+            } catch (e) {
+                console.error("Erro no envio", e);
+                return false;
+            }
+        };
+
+        // --- COMPONENTS ---
+
+        // Basic UI Elements
+        const Button = ({ children, onClick, variant = 'primary', className = "", disabled=false }) => {
+            const base = "font-mono text-xs uppercase tracking-widest transition-colors py-3 rounded-sm flex items-center justify-center gap-2";
+            const styles = {
+                primary: "bg-zinc-900 text-white hover:bg-zinc-800",
+                secondary: "bg-white border border-zinc-200 text-zinc-900 hover:bg-zinc-50",
+                ghost: "text-zinc-500 hover:bg-zinc-100 rounded-full w-10 h-10 p-0"
+            };
+            return (
+                <button onClick={onClick} disabled={disabled} className={`${base} ${styles[variant]} ${className} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    {children}
+                </button>
+            );
+        };
+
+        const Input = ({ label, value, onChange, type = "text", placeholder }) => (
+            <div className="flex flex-col gap-1 mb-4">
+                <label className="text-[10px] uppercase tracking-wider font-mono text-zinc-400">{label}</label>
+                <input 
+                    type={type} 
+                    value={value} 
+                    onChange={e => onChange(e.target.value)}
+                    placeholder={placeholder}
+                    className="w-full bg-transparent border-b border-zinc-300 py-2 font-mono text-sm outline-none text-zinc-900 focus:border-black transition-colors placeholder-zinc-300"
+                />
+            </div>
+        );
+
+        // Views
+        const SetupView = ({ onComplete }) => {
+            const [links, setLinks] = useState({
+                form_params: '',
+                form_registros: '',
+                csv_registros: ''
+            });
+            const [loading, setLoading] = useState(false);
+
+            const handleSave = async () => {
+                setLoading(true);
+                // Validations
+                if (!links.form_params.includes('docs.google.com/forms') || 
+                    !links.csv_registros.includes('output=csv')) {
+                    alert("Links inválidos. Verifique os formatos.");
+                    setLoading(false);
+                    return;
+                }
+
+                // 1. Save Local
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(links));
+
+                // 2. First Run Action: Save config to Params Form (Crypto mock)
+                const configPayload = JSON.stringify(links); 
+                // In real app, encrypt here. Sending raw for prototype simplicity.
+                
+                await postToForm(links.form_params, {
+                    [PARAMS_MAP.label]: 'app_config_backup',
+                    [PARAMS_MAP.value]: configPayload
+                });
+
+                setLoading(false);
+                onComplete(links);
+            };
+
+            return (
+                <div className="min-h-screen flex flex-col items-center justify-center p-6 max-w-md mx-auto">
+                    <div className="mb-8 text-center">
+                        <h1 className="text-xl font-bold tracking-tight mb-2">NN Planner</h1>
+                        <p className="text-zinc-500 text-sm">Configuração Inicial</p>
+                    </div>
+                    
+                    <div className="w-full bg-white p-6 border border-zinc-200 rounded-sm shadow-sm">
+                        <Input label="Link Form Parâmetros" value={links.form_params} onChange={v => setLinks({...links, form_params: v})} placeholder="https://docs.google.com/forms..." />
+                        <Input label="Link Form Registros" value={links.form_registros} onChange={v => setLinks({...links, form_registros: v})} placeholder="https://docs.google.com/forms..." />
+                        <Input label="Link CSV Registros" value={links.csv_registros} onChange={v => setLinks({...links, csv_registros: v})} placeholder="https://docs.google.com/spreadsheets..." />
+                        
+                        <Button onClick={handleSave} disabled={loading} className="w-full mt-4">
+                            {loading ? "Conectando..." : "Conectar Infraestrutura"}
+                        </Button>
+                    </div>
+                    <p className="mt-8 text-[10px] text-zinc-400 font-mono uppercase tracking-widest">Ton Alexandre System</p>
                 </div>
-                <div class="form-group" style="text-align: left; margin-bottom: 2rem;">
-                    <span class="inp-label">Senha</span>
-                    <input type="password" id="log_pass" class="input-std">
-                </div>
+            );
+        };
 
-                <button class="btn btn-primary" onclick="sys.do_login()">BAIXAR PERFIL E ENTRAR</button>
-                <button class="btn btn-ghost" onclick="sys.hard_reset()" style="margin-top: 2rem; color: var(--err); border-color: var(--border);">Novo Setup Local</button>
-            </div>
-        </div>
-    </div>
+        const Dashboard = ({ records }) => {
+            const todayStr = new Date().toISOString().split('T')[0];
+            
+            const stats = useMemo(() => {
+                const currentMonth = new Date().getMonth();
+                const monthly = records.filter(r => new Date(r.date_prev).getMonth() === currentMonth && r.status !== 'void');
+                
+                const income = monthly.filter(r => r.value > 0).reduce((acc, r) => acc + r.value, 0);
+                const expenses = monthly.filter(r => r.value < 0).reduce((acc, r) => acc + r.value, 0);
+                
+                return { income, expenses, balance: income + expenses };
+            }, [records]);
 
-    <!-- 3. APP DASHBOARD -->
-    <div id="screen_app" class="screen">
-        <header>
-            <button class="btn-icon" onclick="ui.toggleDrawer()"><i class="ph ph-list"></i></button>
-            <div class="h-title" id="page_title">LIDA v0</div>
-            <div style="display: flex; gap: 0.5rem;">
-                <button id="btn_filter" class="btn-icon" onclick="ui.toggleFilters()"><i class="ph ph-funnel"></i></button>
-                <button class="btn-icon" onclick="db.sync()" title="Sincronizar"><i class="ph ph-cloud-arrow-up"></i></button>
-            </div>
-        </header>
+            const todayList = records.filter(r => r.date_prev === todayStr && r.status !== 'completed' && r.status !== 'paid');
 
-        <div id="filters_bar" class="filters-bar">
-            <input type="text" id="f_search" class="input-std f-search" style="flex:1; min-width:150px;" placeholder="Buscar..." onkeyup="app.render()">
-            <select id="f_period" class="input-std" style="width:auto;" onchange="app.render()">
-                <option value="hoje">Hoje</option><option value="ontem">Ontem</option><option value="amanha">Amanhã</option>
-                <option value="semana_atual">Esta Semana</option><option value="semana_passada">Semana Passada</option><option value="semana_vem">Semana Que Vem</option>
-                <option value="mes_atual" selected>Este Mês</option><option value="mes_passado">Mês Passado</option><option value="mes_vem">Mês Que Vem</option>
-                <option value="ano_atual">Este Ano</option><option value="ano_passado">Ano Passado</option><option value="tudo">Tudo</option>
-            </select>
-            <select id="f_cat" class="input-std" style="width:auto;" onchange="app.render()"><option value="todos">Categoria</option></select>
-        </div>
-
-        <div id="drawer_overlay" class="drawer-overlay" onclick="ui.toggleDrawer()"></div>
-        <aside id="drawer">
-            <div style="font-weight:700; font-size:1.2rem; margin-bottom:2rem; display:flex; gap:0.5rem; align-items:center;">
-                <i class="ph ph-squares-four"></i> LIDA Journal
-            </div>
-            <button class="nav-btn active" onclick="app.nav('dashboard')"><i class="ph ph-chart-pie-slice"></i> Dashboard</button>
-            <div style="margin-top:2rem; font-size:0.75rem; font-weight:700; color:#94a3b8; margin-bottom:0.5rem;">REGISTROS</div>
-            <button class="nav-btn" onclick="app.nav('todos')"><i class="ph ph-list-dashes"></i> Todos</button>
-            <button class="nav-btn" onclick="app.nav('fin')"><i class="ph ph-currency-dollar"></i> Financeiro</button>
-            <button class="nav-btn" onclick="app.nav('org')"><i class="ph ph-check-square"></i> Organizacional</button>
-            <div style="margin-top:2rem; font-size:0.75rem; font-weight:700; color:#94a3b8; margin-bottom:0.5rem;">SISTEMA</div>
-            <button class="nav-btn" onclick="app.nav('logs')"><i class="ph ph-scroll"></i> Logs</button>
-            <button class="nav-btn" onclick="app.nav('config')"><i class="ph ph-gear"></i> Configurações</button>
-            <button class="nav-btn" onclick="sys.logout()"><i class="ph ph-sign-out"></i> Sair</button>
-        </aside>
-
-        <main id="main_content">
-            <!-- HOME VIEW -->
-            <div id="view_home" class="full-h" style="display: flex; flex-direction: column;">
-                <div id="dash_kpi" class="kpi-grid">
-                    <div class="kpi-card kpi-fin">
-                        <span class="kpi-lbl">Saldo</span><span class="kpi-val" id="k_bal">R$ 0,00</span>
-                        <div style="display:flex; justify-content:space-between; font-size:0.8rem;">
-                            <span style="color:var(--ok)">Ent: <span id="k_in">0</span></span>
-                            <span style="color:var(--err)">Sai: <span id="k_out">0</span></span>
+            return (
+                <div className="space-y-8 animate-in fade-in duration-500">
+                    {/* KPI Cards */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white p-4 border border-zinc-200 rounded-sm">
+                            <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-mono">Saldo Mês</span>
+                            <div className={`font-mono text-xl mt-1 ${stats.balance < 0 ? 'text-red-500' : 'text-zinc-900'}`}>
+                                R$ {stats.balance.toFixed(2)}
+                            </div>
+                        </div>
+                        <div className="bg-white p-4 border border-zinc-200 rounded-sm">
+                            <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-mono">Saídas Previstas</span>
+                            <div className="font-mono text-xl mt-1 text-zinc-500">
+                                R$ {Math.abs(stats.expenses).toFixed(2)}
+                            </div>
                         </div>
                     </div>
-                    <div class="kpi-card kpi-org">
-                        <span class="kpi-lbl">Tarefas</span><span class="kpi-val" id="k_task">0</span>
-                        <div style="display:flex; justify-content:space-between; font-size:0.8rem;">
-                            <span style="color:var(--warn)">Pend: <span id="k_pend">0</span></span>
-                            <span style="color:var(--ok)">Ok: <span id="k_ok">0</span></span>
+
+                    {/* Today List */}
+                    <div>
+                        <div className="flex items-center justify-between mb-4 border-b border-zinc-100 pb-2">
+                            <h3 className="font-mono text-xs uppercase tracking-widest text-zinc-400">Hoje</h3>
+                            <span className="text-[10px] font-mono bg-zinc-100 px-2 py-0.5 rounded-full text-zinc-500">{todayList.length}</span>
                         </div>
+                        
+                        {todayList.length === 0 ? (
+                            <p className="text-sm text-zinc-400 italic">Nada planejado para hoje.</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {todayList.map((item, i) => (
+                                    <div key={i} className="flex items-center justify-between p-3 bg-white border border-zinc-100 rounded-sm hover:border-zinc-300 transition-colors">
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-medium text-zinc-800">{item.title}</span>
+                                            <span className="text-[10px] text-zinc-400 uppercase tracking-wide">{item.category}</span>
+                                        </div>
+                                        {item.value !== 0 && (
+                                            <span className={`font-mono text-sm ${item.value < 0 ? 'text-red-400' : 'text-zinc-600'}`}>
+                                                {item.value.toFixed(2)}
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
-                <div class="list-container">
-                    <div class="list-header"><span id="lbl_list">Registros</span><span id="lbl_count">0</span></div>
-                    <div id="list_render"></div>
-                </div>
-                <div class="fab" onclick="app.openModal()"><i class="ph ph-plus"></i></div>
-            </div>
+            );
+        };
 
-            <!-- CONFIG VIEW -->
-            <div id="view_config" class="full-h hidden" style="padding: 1rem;">
-                <h3 style="margin-bottom: 1rem;">Preferências</h3>
-                <div class="kpi-card" style="margin-bottom: 1.5rem;">
-                    <span class="inp-label">Início da Semana</span>
-                    <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
-                        <label><input type="radio" name="ws" id="ws_dom" onclick="sys.save_pref(0)"> Domingo</label>
-                        <label><input type="radio" name="ws" id="ws_seg" onclick="sys.save_pref(1)"> Segunda</label>
+        const ListView = ({ records, typeFilter }) => {
+            // typeFilter: 'all', 'financial', 'organizational'
+            const filtered = records.filter(r => {
+                if (typeFilter === 'all') return true;
+                return r.type === typeFilter;
+            });
+
+            return (
+                <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-lg font-light text-zinc-900">
+                            {typeFilter === 'all' ? 'Visão Geral' : typeFilter === 'financial' ? 'Financeiro' : 'Tarefas'}
+                        </h2>
+                        <button className="text-zinc-400 hover:text-zinc-900"><Icon name="filter" /></button>
+                    </div>
+
+                    {filtered.map((item, i) => (
+                        <div key={i} className="bg-white p-4 border border-zinc-200 rounded-sm flex justify-between items-center">
+                            <div>
+                                <div className="text-sm text-zinc-900 font-medium">{item.title}</div>
+                                <div className="flex gap-2 mt-1">
+                                    <span className="text-[10px] font-mono text-zinc-400 bg-zinc-50 px-1 rounded">{item.date_prev.split('-').reverse().slice(0,2).join('/')}</span>
+                                    <span className="text-[10px] font-mono text-zinc-400 uppercase">{item.category}</span>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                {item.value !== 0 && (
+                                    <div className={`font-mono text-sm ${item.value < 0 ? 'text-zinc-900' : 'text-zinc-500'}`}>
+                                        {item.value.toFixed(2)}
+                                    </div>
+                                )}
+                                <div className={`w-2 h-2 rounded-full ml-auto mt-2 ${item.status === 'paid' || item.status === 'completed' ? 'bg-zinc-900' : 'bg-zinc-200'}`}></div>
+                            </div>
+                        </div>
+                    ))}
+                    <div className="h-20"></div> {/* Spacer for FAB */}
+                </div>
+            );
+        };
+
+        const NewRecordModal = ({ isOpen, onClose, config }) => {
+            const [formData, setFormData] = useState({
+                title: '',
+                value: '',
+                date: new Date().toISOString().split('T')[0],
+                category: 'Geral',
+                type: 'financial' // financial or organizational
+            });
+            const [saving, setSaving] = useState(false);
+
+            if (!isOpen) return null;
+
+            const handleSubmit = async () => {
+                setSaving(true);
+                const id = Date.now().toString();
+                const finalValue = formData.type === 'organizational' ? 0 : parseFloat(formData.value || 0);
+                
+                // Mapeamento para envio
+                const payload = {
+                    [FORM_MAP.id]: id,
+                    [FORM_MAP.titulo]: formData.title,
+                    [FORM_MAP.data_prevista]: formData.date,
+                    [FORM_MAP.valor]: finalValue,
+                    [FORM_MAP.categoria]: formData.category,
+                    [FORM_MAP.status]: 'pending',
+                    // Campos extras vazios
+                    [FORM_MAP.data_realizada]: '', 
+                };
+
+                const success = await postToForm(config.form_registros, payload);
+                setSaving(false);
+                if (success) {
+                    alert("Salvo com sucesso (Append-only). Atualize em instantes.");
+                    onClose();
+                } else {
+                    alert("Erro ao salvar.");
+                }
+            };
+
+            return (
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/20 backdrop-blur-sm p-4 animate-in fade-in">
+                    <div className="bg-white w-full max-w-md p-6 rounded-sm shadow-xl border border-zinc-200 animate-in slide-in-from-bottom-10">
+                        <div className="flex justify-between items-center mb-6 border-b border-zinc-100 pb-2">
+                            <h3 className="font-mono text-xs uppercase tracking-widest text-zinc-900">Novo Registro</h3>
+                            <button onClick={onClose}><Icon name="x" className="text-zinc-400" /></button>
+                        </div>
+
+                        <div className="flex gap-2 mb-6">
+                            <button 
+                                onClick={() => setFormData({...formData, type: 'financial'})}
+                                className={`flex-1 py-2 text-xs font-mono uppercase tracking-widest border ${formData.type === 'financial' ? 'bg-zinc-900 text-white border-zinc-900' : 'text-zinc-400 border-zinc-200'}`}
+                            >
+                                Financeiro
+                            </button>
+                            <button 
+                                onClick={() => setFormData({...formData, type: 'organizational'})}
+                                className={`flex-1 py-2 text-xs font-mono uppercase tracking-widest border ${formData.type === 'organizational' ? 'bg-zinc-900 text-white border-zinc-900' : 'text-zinc-400 border-zinc-200'}`}
+                            >
+                                Tarefa
+                            </button>
+                        </div>
+
+                        <Input label="Título" value={formData.title} onChange={v => setFormData({...formData, title: v})} placeholder="Ex: Mercado" />
+                        
+                        {formData.type === 'financial' && (
+                             <Input label="Valor (Use - para despesa)" type="number" value={formData.value} onChange={v => setFormData({...formData, value: v})} placeholder="-50.00" />
+                        )}
+
+                        <Input label="Data" type="date" value={formData.date} onChange={v => setFormData({...formData, date: v})} />
+                        
+                        <div className="mb-6">
+                             <label className="text-[10px] uppercase tracking-wider font-mono text-zinc-400 mb-1 block">Categoria</label>
+                             <select 
+                                value={formData.category} 
+                                onChange={e => setFormData({...formData, category: e.target.value})}
+                                className="w-full bg-transparent border-b border-zinc-300 py-2 font-mono text-sm outline-none text-zinc-900"
+                             >
+                                <option>Geral</option>
+                                <option>Alimentação</option>
+                                <option>Contas Fixas</option>
+                                <option>Lazer</option>
+                                <option>Filho</option>
+                                <option>Transporte</option>
+                             </select>
+                        </div>
+
+                        <Button onClick={handleSubmit} disabled={saving} className="w-full">
+                            {saving ? "Registrando..." : "Confirmar"}
+                        </Button>
                     </div>
                 </div>
-                <h3 style="margin-bottom: 1rem;">Categorias</h3>
-                <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
-                    <input type="text" id="new_cat_name" placeholder="Nova..." class="input-std" style="flex:1;">
-                    <button class="btn btn-primary" onclick="db.addCat()" style="width: auto;">Add</button>
+            );
+        };
+
+        // Layout Shell
+        const Layout = ({ children, activeTab, onTabChange, onAdd }) => {
+            return (
+                <div className="min-h-screen bg-zinc-50 pb-24">
+                    {/* Header */}
+                    <header className="fixed top-0 left-0 right-0 z-40 bg-zinc-50/90 backdrop-blur-sm border-b border-zinc-200 h-14 flex items-center justify-between px-6">
+                        <span className="font-sans font-semibold text-sm tracking-tight text-zinc-900">NN Planner</span>
+                        <span className="font-mono text-[10px] text-zinc-300 uppercase tracking-widest hidden sm:block">Ton Alexandre</span>
+                    </header>
+
+                    {/* Main Content */}
+                    <main className="pt-20 px-6 max-w-md mx-auto">
+                        {children}
+                    </main>
+
+                    {/* FAB */}
+                    <button 
+                        onClick={onAdd}
+                        className="fixed bottom-20 right-6 w-12 h-12 bg-zinc-900 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-black transition-transform active:scale-95 z-40"
+                    >
+                        <Icon name="plus" />
+                    </button>
+
+                    {/* Bottom Nav */}
+                    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 h-16 flex items-center justify-around px-6 z-40 pb-safe">
+                        <button onClick={() => onTabChange('dash')} className={`p-2 rounded-full ${activeTab === 'dash' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400'}`}>
+                            <Icon name="layout-dashboard" />
+                        </button>
+                        <button onClick={() => onTabChange('fin')} className={`p-2 rounded-full ${activeTab === 'fin' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400'}`}>
+                            <Icon name="wallet" />
+                        </button>
+                         <button onClick={() => onTabChange('org')} className={`p-2 rounded-full ${activeTab === 'org' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400'}`}>
+                            <Icon name="check-square" />
+                        </button>
+                        <button onClick={() => onTabChange('settings')} className={`p-2 rounded-full ${activeTab === 'settings' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400'}`}>
+                            <Icon name="settings" />
+                        </button>
+                    </nav>
                 </div>
-                <div id="conf_cat_list"></div>
-            </div>
+            );
+        };
 
-            <!-- LOGS VIEW -->
-            <div id="view_logs" class="full-h hidden" style="padding: 1rem;">
-                <div id="log_list"></div>
-            </div>
-        </main>
-    </div>
+        // --- MAIN APP ---
 
-    <!-- MODAL -->
-    <div id="modal_overlay" class="modal-overlay hidden">
-        <div class="modal">
-            <div class="modal-header">
-                <span class="modal-title">Registro</span>
-                <button class="btn-icon" onclick="ui.closeModal()"><i class="ph ph-x"></i></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="e_id">
-                <div class="form-group"><label class="inp-label">Título</label><input type="text" id="e_titulo" class="input-std"></div>
-                <div class="form-grid">
-                    <div class="form-group"><label class="inp-label">Data</label><input type="date" id="e_data" class="input-std"></div>
-                    <div class="form-group"><label class="inp-label">Hora</label><input type="time" id="e_hora" class="input-std"></div>
-                </div>
-                <div class="form-grid">
-                    <div class="form-group"><label class="inp-label">Valor (R$)</label><input type="number" id="e_valor" step="0.01" class="input-std" placeholder="0.00"></div>
-                    <div class="form-group"><label class="inp-label">Categoria</label><select id="e_cat" class="input-std"></select></div>
-                </div>
-                <div class="form-grid" style="align-items:center;">
-                    <div class="form-group"><label class="inp-label">Recorrência</label><select id="e_rec" class="input-std"><option value="unica">Única</option><option value="mensal">Mensal</option></select></div>
-                    <div class="form-group">
-                        <label class="inp-label">Concluído</label>
-                        <label class="switch"><input type="checkbox" id="e_status"><span class="slider"></span></label>
-                    </div>
-                </div>
-                <div class="form-group"><label class="inp-label">Detalhes</label><textarea id="e_det" class="input-std" rows="3"></textarea></div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-primary" onclick="db.saveItem()" style="width: auto;">SALVAR</button>
-                <button class="btn btn-danger" onclick="db.deleteItem()" style="width: auto;">EXCLUIR</button>
-            </div>
-        </div>
-    </div>
+        const App = () => {
+            const [config, setConfig] = useState(null);
+            const [records, setRecords] = useState([]);
+            const [view, setView] = useState('dash'); // dash, fin, org, settings
+            const [isModalOpen, setIsModalOpen] = useState(false);
+            const [loadingData, setLoadingData] = useState(false);
 
-    <script>
-        // --- UTILS ---
-        const utils = {
-            sha256: async (s) => {
-                const b = new TextEncoder().encode(s);
-                const h = await crypto.subtle.digest('SHA-256', b);
-                return Array.from(new Uint8Array(h)).map(x => x.toString(16).padStart(2,'0')).join('');
-            },
-            parse_form_link: (url, map) => {
+            // 1. Boot Sequence
+            useEffect(() => {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    setConfig(parsed);
+                    fetchData(parsed.csv_registros);
+                }
+            }, []);
+
+            const fetchData = async (url) => {
+                setLoadingData(true);
                 try {
-                    const base = url.split('/viewform')[0] + '/formResponse';
-                    const params = new URLSearchParams(url.split('?')[1]);
-                    const entries = {};
-                    for (let [k, t] of Object.entries(map)) {
-                        params.forEach((v, pk) => { if (v.trim() === t) entries[k] = pk; });
-                    }
-                    return { base, entries };
-                } catch { return null; }
-            },
-            send_form: async (ep, d) => {
-                const fd = new URLSearchParams();
-                for(let [k, id] of Object.entries(ep.entries)) { 
-                    let v = d[k]; if(v===true)v='True'; if(v===false)v='False'; if(v===undefined)v='';
-                    fd.append(id, v);
+                    const res = await fetch(url);
+                    const text = await res.text();
+                    const raw = parseCSV(text);
+                    const processed = processRecords(raw);
+                    setRecords(processed);
+                } catch (err) {
+                    console.error("Erro fetch csv", err);
+                    // alert("Erro ao carregar dados. Verifique sua conexão ou o link CSV.");
+                } finally {
+                    setLoadingData(false);
                 }
-                await fetch(ep.url, { method: 'POST', mode: 'no-cors', body: fd });
-            },
-            // Parser CSV Genérico adicionado de volta
-            parse_csv: (txt) => {
-                const res=[], lines=txt.split('\n');
-                lines.forEach(l => {
-                    if(!l.trim()) return;
-                    const r = l.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                    res.push(r.map(c => c.trim().replace(/^"|"$/g, '').replace(/""/g, '"')));
-                });
-                return res;
-            },
-            proc_csv: (txt, type) => {
-                const lines = txt.split('\n'), res = [];
-                lines.forEach(l => {
-                    if(!l.trim()) return;
-                    const r = l.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
-                    // Detect ID col based on pattern: r... or c... or sys...
-                    let idIdx = -1;
-                    r.forEach((cell, i) => { if((type==='rec' && /^r\d+/.test(cell)) || (type==='cat' && (/^[cs]\d+|sys_/.test(cell))) || (type==='log' && cell.includes('SUCESSO'))) idIdx = i; });
-                    
-                    if(idIdx > -1) {
-                       if(type==='rec') res.push({id:r[idIdx], titulo:r[idIdx+1], data:r[idIdx+2], hora:r[idIdx+3], valor:r[idIdx+4], cat:r[idIdx+5], rec:r[idIdx+6], status:r[idIdx+7], det:r[idIdx+8], ts:r[idIdx+9], del:r[idIdx+10]});
-                       if(type==='cat') res.push({id:r[idIdx], nome:r[idIdx+1], ts:r[idIdx+2], del:r[idIdx+3]});
-                    }
-                    if(type==='log' && r.length>=3) res.push({status:r[0], data:r[1], agent:r[2]});
-                });
-                return res;
-            },
-            get_date: (p, ws) => {
-                const h=new Date(); h.setHours(0,0,0,0); const e=new Date(); e.setHours(23,59,59,999);
-                const add=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
-                const stW=(d)=>{const x=new Date(d);const diff=(x.getDay()<ws?7:0)+x.getDay()-ws;x.setDate(x.getDate()-diff);return x;};
-                if(p==='hoje') return {start:h,end:e};
-                if(p==='ontem') return {start:add(h,-1),end:add(e,-1)};
-                if(p==='amanha') return {start:add(h,1),end:add(e,1)};
-                if(p==='semana_atual') {const s=stW(h); return {start:s,end:add(s,6)};}
-                if(p==='semana_passada') {const s=add(stW(h),-7); return {start:s,end:add(s,6)};}
-                if(p==='semana_vem') {const s=add(stW(h),7); return {start:s,end:add(s,6)};}
-                if(p==='mes_atual') return {start:new Date(h.getFullYear(),h.getMonth(),1),end:new Date(h.getFullYear(),h.getMonth()+1,0)};
-                if(p==='mes_passado') return {start:new Date(h.getFullYear(),h.getMonth()-1,1),end:new Date(h.getFullYear(),h.getMonth(),0)};
-                if(p==='mes_vem') return {start:new Date(h.getFullYear(),h.getMonth()+1,1),end:new Date(h.getFullYear(),h.getMonth()+2,0)};
-                if(p==='ano_atual') return {start:new Date(h.getFullYear(),0,1),end:new Date(h.getFullYear(),11,31)};
-                if(p==='ano_passado') return {start:new Date(h.getFullYear()-1,0,1),end:new Date(h.getFullYear()-1,11,31)};
-                if(p==='ano_vem') return {start:new Date(h.getFullYear()+1,0,1),end:new Date(h.getFullYear()+1,11,31)};
-                return null;
+            };
+
+            const handleSetupComplete = (newConfig) => {
+                setConfig(newConfig);
+                fetchData(newConfig.csv_registros);
+            };
+
+            const handleRefresh = () => {
+                if(config) fetchData(config.csv_registros);
             }
+
+            if (!config) {
+                return <SetupView onComplete={handleSetupComplete} />;
+            }
+
+            return (
+                <>
+                <Layout activeTab={view} onTabChange={setView} onAdd={() => setIsModalOpen(true)}>
+                    {view === 'dash' && <Dashboard records={records} />}
+                    {view === 'fin' && <ListView records={records} typeFilter="financial" />}
+                    {view === 'org' && <ListView records={records} typeFilter="organizational" />}
+                    
+                    {view === 'settings' && (
+                        <div className="space-y-4">
+                            <h2 className="text-lg font-light mb-4">Configurações</h2>
+                            <div className="p-4 bg-white border border-zinc-200 rounded-sm">
+                                <p className="text-xs font-mono text-zinc-400 mb-2">INFRAESTRUTURA</p>
+                                <p className="text-xs truncate text-zinc-600 mb-4">{config.csv_registros}</p>
+                                <Button variant="secondary" onClick={() => {
+                                    localStorage.removeItem(STORAGE_KEY);
+                                    setConfig(null);
+                                }} className="w-full">
+                                    Desconectar / Resetar
+                                </Button>
+                            </div>
+                            <Button variant="secondary" onClick={handleRefresh} className="w-full">
+                                {loadingData ? "Atualizando..." : "Forçar Atualização de Dados"}
+                            </Button>
+                        </div>
+                    )}
+                </Layout>
+
+                <NewRecordModal 
+                    isOpen={isModalOpen} 
+                    onClose={() => setIsModalOpen(false)} 
+                    config={config}
+                />
+                </>
+            );
         };
 
-        // --- 1. CORE SYSTEM ---
-        const sys = {
-            config: {},
-            
-            init: () => {
-                const c = localStorage.getItem('lida_config');
-                const s = sessionStorage.getItem('lida_session');
-                
-                if (c && s === 'ok') {
-                    sys.config = JSON.parse(c);
-                    sys.goto('app');
-                    app.init();
-                } else {
-                    // Check if local config exists to pre-fill login
-                    if(c) {
-                        sys.config = JSON.parse(c);
-                        if(sys.config.endpoints.cat && sys.config.endpoints.cat.csv) {
-                            document.getElementById('log_csv_link').value = sys.config.endpoints.cat.csv;
-                        }
-                        sys.goto('login');
-                    } else {
-                        sys.goto('setup');
-                    }
-                }
-            },
-
-            goto: (screen) => {
-                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-                document.getElementById('screen_' + screen).classList.add('active');
-            },
-
-            do_setup: async () => {
-                const user = document.getElementById('set_user').value;
-                const pass = document.getElementById('set_pass').value;
-                const urls = {
-                    rec: { f: document.getElementById('l_form_rec').value, c: document.getElementById('l_csv_rec').value },
-                    cat: { f: document.getElementById('l_form_cat').value, c: document.getElementById('l_csv_cat').value },
-                    log: { f: document.getElementById('l_form_log').value, c: document.getElementById('l_csv_log').value }
-                };
-
-                if(!user || !pass || !urls.rec.f || !urls.cat.c) return alert('Preencha os campos obrigatórios.');
-
-                const maps = {
-                    rec: { id:'TAG_ID', titulo:'TAG_TITULO', data:'TAG_DATA', hora:'TAG_HORA', valor:'TAG_VALOR', cat:'TAG_CAT', rec:'TAG_REC', status:'TAG_STATUS', det:'TAG_DET', ts:'TAG_TS', del:'TAG_DEL' },
-                    cat: { id:'TAG_ID', nome:'TAG_NOME', ts:'TAG_TS', del:'TAG_DEL' },
-                    log: { status:'TAG_STATUS', data:'TAG_DATA', agent:'TAG_AGENT', screen:'TAG_SCREEN', ip:'TAG_IP' }
-                };
-
-                // 1. Build Config Object
-                const cfg = { user, pass_hash: await utils.sha256(pass), endpoints: {}, prefs: { week_start: 0 } };
-                
-                for (let k of ['rec','cat','log']) {
-                    const p = utils.parse_form_link(urls[k].f, maps[k]);
-                    if(!p) return alert(`Erro no link do Form ${k.toUpperCase()}`);
-                    cfg.endpoints[k] = { url: p.base, entries: p.entries, csv: urls[k].c };
-                }
-
-                // 2. Save Config to LISTS Form (Cloud Storage of Profile)
-                const configRow = {
-                    id: 'sys_config',
-                    nome: JSON.stringify(cfg),
-                    ts: new Date().toISOString(),
-                    del: 'false'
-                };
-
-                ui.loader(true, 'Salvando perfil na nuvem...');
-                try {
-                    await utils.send_form(cfg.endpoints.cat, configRow);
-                    // Also save locally
-                    localStorage.setItem('lida_config', JSON.stringify(cfg));
-                    sessionStorage.setItem('lida_session', 'ok');
-                    
-                    // Add default cats if needed
-                    ['Trabalhos','Projetos','Contas'].forEach(c => {
-                       utils.send_form(cfg.endpoints.cat, {id:'c'+Math.random(), nome:c, ts:new Date().toISOString(), del:'false'});
-                    });
-
-                    setTimeout(() => { ui.loader(false); sys.init(); }, 2000);
-                } catch(e) { alert('Erro ao salvar nuvem: ' + e); ui.loader(false); }
-            },
-
-            do_login: async () => {
-                const csvLink = document.getElementById('log_csv_link').value;
-                const u = document.getElementById('log_user').value;
-                const p = document.getElementById('log_pass').value;
-
-                if(!csvLink || !u || !p) return alert('Preencha tudo.');
-
-                ui.loader(true, 'Buscando perfil...');
-                
-                try {
-                    // Fetch Lists CSV to find sys_config
-                    const res = await fetch(csvLink + '&t=' + Date.now());
-                    const txt = await res.text();
-                    const rows = utils.parse_csv(txt);
-                    
-                    let cloudCfg = null;
-                    rows.forEach(r => {
-                        const idx = r.indexOf('sys_config');
-                        if(idx > -1 && r[idx+1]) {
-                            try { cloudCfg = JSON.parse(r[idx+1]); } catch(e){}
-                        }
-                    });
-
-                    if(!cloudCfg) throw new Error('Perfil não encontrado nesta planilha.');
-
-                    // Verify Auth
-                    const h = await utils.sha256(p);
-                    if(u === cloudCfg.user && h === cloudCfg.pass_hash) {
-                        // Success! Update local config
-                        localStorage.setItem('lida_config', JSON.stringify(cloudCfg));
-                        sessionStorage.setItem('lida_session', 'ok');
-                        sys.init();
-                    } else {
-                        alert('Usuário ou senha inválidos.');
-                    }
-
-                } catch(e) {
-                    alert('Erro de Login: ' + e.message);
-                } finally { ui.loader(false); }
-            },
-
-            logout: () => {
-                sessionStorage.removeItem('lida_session');
-                location.reload();
-            },
-            
-            hard_reset: () => {
-                if(confirm('Isso apaga todos os dados locais. Continuar?')) {
-                    localStorage.clear();
-                    location.reload();
-                }
-            },
-
-            save_pref: (val) => {
-                sys.config.prefs.week_start = val;
-                localStorage.setItem('lida_config', JSON.stringify(sys.config));
-                // Update Cloud
-                const configRow = {
-                    id: 'sys_config',
-                    nome: JSON.stringify(sys.config),
-                    ts: new Date().toISOString(),
-                    del: 'false'
-                };
-                utils.send_form(sys.config.endpoints.cat, configRow);
-                app.render();
-            }
-        };
-
-        // --- 2. DB & LOGIC ---
-        const db = {
-            data: { local: [], cloud: [], merged: [], cats: [], logs: [] },
-            
-            load: async () => {
-                const ld = localStorage.getItem('lida_data');
-                if(ld) db.data.local = JSON.parse(ld);
-                await db.sync(true); // Silent sync on load
-            },
-
-            sync: async (silent) => {
-                if(!silent) ui.loader(true, 'Sincronizando...');
-                
-                try {
-                    const ts = Date.now();
-                    const [txtRec, txtCat, txtLog] = await Promise.all([
-                        fetch(sys.config.endpoints.rec.csv + '&t=' + ts).then(r=>r.text()),
-                        fetch(sys.config.endpoints.cat.csv + '&t=' + ts).then(r=>r.text()),
-                        fetch(sys.config.endpoints.log.csv + '&t=' + ts).then(r=>r.text())
-                    ]);
-
-                    const cRecs = utils.proc_csv(txtRec, 'rec');
-                    const cCats = utils.proc_csv(txtCat, 'cat');
-                    const cLogs = utils.proc_csv(txtLog, 'log');
-
-                    db.data.cloud = cRecs;
-                    db.data.cats = cCats;
-                    db.data.logs = cLogs.reverse();
-
-                    // Merge: Local overwrites Cloud if dirty/newer
-                    const newLocal = [];
-                    db.data.local.forEach(loc => {
-                        const cld = cRecs.find(c => c.id === loc.id);
-                        if(cld) {
-                            // If local ts > cloud ts, keep local
-                            if(new Date(loc.ts) > new Date(cld.ts)) newLocal.push(loc);
-                        } else {
-                            newLocal.push(loc); // Not in cloud yet
-                        }
-                    });
-                    db.data.local = newLocal;
-                    
-                    db.merge();
-                    db.persist();
-                    
-                } catch(e) { console.log(e); }
-                
-                if(!silent) ui.loader(false);
-                app.render();
-                app.render_config();
-                app.render_logs();
-            },
-
-            merge: () => {
-                const m = new Map();
-                db.data.cloud.forEach(i => m.set(i.id, i));
-                db.data.local.forEach(i => m.set(i.id, {...i, dirty: true})); // Local gets visual flag
-                db.data.merged = Array.from(m.values());
-            },
-
-            persist: () => {
-                localStorage.setItem('lida_data', JSON.stringify(db.data.local));
-                db.merge();
-            },
-
-            // ACTIONS
-            saveItem: () => {
-                const id = document.getElementById('e_id').value || 'r' + Date.now();
-                const item = {
-                    id,
-                    titulo: document.getElementById('e_titulo').value,
-                    data: document.getElementById('e_data').value,
-                    hora: document.getElementById('e_hora').value,
-                    valor: document.getElementById('e_valor').value,
-                    cat: document.getElementById('e_cat').value,
-                    rec: document.getElementById('e_rec').value,
-                    status: document.getElementById('e_status').checked ? 'concluido' : 'pendente',
-                    det: document.getElementById('e_det').value,
-                    ts: new Date().toISOString(),
-                    del: 'false',
-                    dirty: true
-                };
-                
-                if(!item.titulo || !item.data) return alert('Preencha título e data');
-
-                const idx = db.data.local.findIndex(i => i.id === id);
-                if(idx > -1) db.data.local[idx] = item; else db.data.local.push(item);
-                
-                db.persist();
-                ui.closeModal();
-                app.render();
-                utils.send_form(sys.config.endpoints.rec, item);
-            },
-
-            deleteItem: () => {
-                const id = document.getElementById('e_id').value;
-                if(!id) return;
-                const r = db.data.merged.find(i=>i.id===id);
-                if(r) {
-                    const newItem = {...r, del:'true', ts:new Date().toISOString()};
-                    const idx = db.data.local.findIndex(i => i.id === id);
-                    if(idx > -1) db.data.local[idx] = newItem; else db.data.local.push(newItem);
-                    db.persist();
-                    utils.send_form(sys.config.endpoints.rec, newItem);
-                }
-                ui.closeModal();
-                app.render();
-            },
-
-            addCat: () => {
-                const n = document.getElementById('new_cat_name').value;
-                if(!n) return;
-                const item = {id:'c'+Date.now(), nome:n, ts:new Date().toISOString(), del:'false'};
-                db.data.cats.push(item); // Optimistic UI for Config Screen? No, rely on sync mostly, but push temp
-                document.getElementById('new_cat_name').value = '';
-                utils.send_form(sys.config.endpoints.cat, item);
-                alert('Categoria enviada. Sincronize para atualizar.'); // Simplification
-            },
-            
-            delCat: (id) => {
-               const c = db.data.cats.find(i=>i.id===id);
-               if(c) { c.del='true'; utils.send_form(sys.config.endpoints.cat, c); alert('Exclusão enviada. Sincronize.'); }
-            }
-        };
-
-        // --- 3. UI & HELPERS ---
-        const app = {
-            view: 'dashboard',
-            init: () => {
-                db.load();
-                // Load Prefs
-                const ws = sys.config.prefs.week_start;
-                document.getElementById('ws_dom').checked = (ws === 0);
-                document.getElementById('ws_seg').checked = (ws === 1);
-            },
-            nav: (v) => {
-                app.view = v;
-                ui.toggleDrawer(false);
-                document.getElementById('page_title').innerText = v.charAt(0).toUpperCase() + v.slice(1);
-                
-                // Toggle Filter Bar Visibility
-                const fBar = document.getElementById('filters_bar');
-                const btnF = document.getElementById('btn_filter');
-                if(v === 'config' || v === 'logs') {
-                    fBar.style.display = 'none'; 
-                    btnF.style.display = 'none';
-                } else {
-                    fBar.style.display = ''; // Restore flex/block via css class logic, simplified here:
-                    fBar.classList.remove('open'); // Close initially
-                    btnF.style.display = 'block';
-                }
-
-                ['view_home','view_config','view_logs'].forEach(x=>document.getElementById(x).classList.add('hidden'));
-                
-                if(v==='config') { document.getElementById('view_config').classList.remove('hidden'); app.render_config(); }
-                else if(v==='logs') { document.getElementById('view_logs').classList.remove('hidden'); app.render_logs(); }
-                else {
-                    document.getElementById('view_home').classList.remove('hidden');
-                    document.getElementById('dash_kpi').style.display = (v === 'dashboard') ? 'grid' : 'none';
-                    if(v==='dashboard') document.getElementById('f_period').value = 'hoje';
-                    app.render();
-                }
-            },
-            
-            render: () => {
-                const list = document.getElementById('list_render');
-                list.innerHTML = '';
-                
-                let items = db.data.merged.filter(r => String(r.del) !== 'true');
-                
-                // Filters
-                if(app.view === 'fin') items = items.filter(r => Number(r.valor) > 0);
-                if(app.view === 'org') items = items.filter(r => !r.valor || Number(r.valor) === 0);
-                
-                const term = document.getElementById('f_search').value.toLowerCase();
-                if(term) items = items.filter(r => (r.titulo||'').toLowerCase().includes(term));
-                
-                const cat = document.getElementById('f_cat').value;
-                if(cat !== 'todos') items = items.filter(r => r.cat === cat);
-                
-                const per = document.getElementById('f_period').value;
-                const rng = utils.get_date(per, sys.config.prefs.week_start);
-                if(rng) items = items.filter(r => {
-                    const d = new Date(r.data + 'T12:00:00');
-                    return d >= rng.start && d <= rng.end;
-                });
-
-                // Sort
-                if(app.view==='dashboard') items.sort((a,b) => (a.hora||'').localeCompare(b.hora||''));
-                else items.sort((a,b) => (b.data||'').localeCompare(a.data||''));
-
-                // KPI
-                let b=0, i=0, o=0, t=0, p=0, k=0;
-                items.forEach(r => {
-                    const v = Number(r.valor||0);
-                    if(v>0) { if(['Trabalhos','Receitas'].includes(r.cat)) {i+=v;b+=v;} else {o+=v;b-=v;} }
-                    else { t++; if(r.status==='pendente')p++; else k++; }
-                });
-                document.getElementById('k_bal').innerText = b.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-                document.getElementById('k_in').innerText = i.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-                document.getElementById('k_out').innerText = o.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-                document.getElementById('k_task').innerText = t; document.getElementById('k_pend').innerText = p; document.getElementById('k_ok').innerText = k;
-                document.getElementById('lbl_count').innerText = items.length;
-
-                items.forEach(r => {
-                    const v = Number(r.valor||0);
-                    const vFmt = v > 0 ? v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '';
-                    const dt = (r.data||'').split('-').reverse().join('/');
-                    const cls = r.dirty ? 'row divergent' : 'row';
-                    const chk = r.status === 'concluido' ? 'checked' : '';
-                    
-                    list.innerHTML += `
-                    <div class="${cls}" onclick="app.openModal('${r.id}')">
-                        <div class="r-check ${chk}"></div>
-                        <div class="r-main"><div class="r-title">${r.titulo}</div><div class="r-meta"><span class="r-tag">${r.cat}</span><span>${dt} ${r.hora||''}</span></div></div>
-                        <div class="r-val">${vFmt}</div>
-                    </div>`;
-                });
-            },
-
-            openModal: (id) => {
-                if(id) {
-                    const r = db.data.merged.find(i=>i.id===id);
-                    document.getElementById('e_id').value = r.id;
-                    document.getElementById('e_titulo').value = r.titulo;
-                    document.getElementById('e_data').value = r.data;
-                    document.getElementById('e_hora').value = r.hora;
-                    document.getElementById('e_valor').value = r.valor;
-                    document.getElementById('e_det').value = r.det;
-                    document.getElementById('e_rec').value = r.rec || 'unica';
-                    document.getElementById('e_status').checked = (r.status === 'concluido');
-                    ui.popCats(r.cat);
-                } else {
-                    document.getElementById('e_id').value = '';
-                    document.getElementById('e_data').value = new Date().toISOString().split('T')[0];
-                    document.getElementById('e_titulo').value = '';
-                    document.getElementById('e_valor').value = '';
-                    document.getElementById('e_hora').value = '';
-                    document.getElementById('e_det').value = '';
-                    ui.popCats();
-                }
-                document.getElementById('modal_overlay').classList.remove('hidden');
-            },
-
-            render_config: () => {
-                const l = document.getElementById('conf_cat_list'); l.innerHTML='';
-                const u = [...new Set(db.data.cats.filter(c=>String(c.del)!=='true'&&c.id!=='sys_config').map(c=>c.nome))];
-                u.forEach(n => {
-                    const id = db.data.cats.find(x=>x.nome===n).id;
-                    l.innerHTML += `<div class="row" style="grid-template-columns:1fr auto;"><span>${n}</span><button style="color:red;border:none;background:none;" onclick="db.delCat('${id}')">X</button></div>`;
-                });
-            },
-            
-            render_logs: () => {
-                const l = document.getElementById('log_list'); l.innerHTML='';
-                db.data.logs.slice(0,50).forEach(x => {
-                    l.innerHTML += `<div class="log-row"><span>${x.data.replace('T',' ')}</span><span>${x.status}</span></div>`;
-                });
-            }
-        };
-
-        const ui = {
-            toggleDrawer: (f) => document.getElementById('drawer').classList.toggle('open'),
-            toggleFilters: () => document.getElementById('filters_bar').classList.toggle('open'),
-            closeModal: () => document.getElementById('modal_overlay').classList.add('hidden'),
-            loader: (s,m) => { const l=document.getElementById('loader'); if(s) { l.style.display='flex'; if(m)l.querySelector('div').innerText=m; } else l.style.display='none'; },
-            popCats: (sel) => {
-                const s = document.getElementById('e_cat'), f = document.getElementById('f_cat');
-                const u = [...new Set(db.data.cats.filter(c=>String(c.del)!=='true'&&c.id!=='sys_config').map(c=>c.nome))];
-                s.innerHTML = ''; f.innerHTML = '<option value="todos">Categoria</option>';
-                u.forEach(n => {
-                    s.innerHTML += `<option ${n===sel?'selected':''}>${n}</option>`;
-                    f.innerHTML += `<option>${n}</option>`;
-                });
-            }
-        };
-
-        window.onload = sys.init;
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+        
+        // Ativar ícones após renderização inicial
+        setTimeout(() => {
+            if (window.lucide) window.lucide.createIcons();
+        }, 100);
     </script>
 </body>
 </html>
