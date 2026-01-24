@@ -18,7 +18,7 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     
-    <!-- Google Fonts: Inter (Sans) & JetBrains Mono (Mono) -->
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -49,11 +49,9 @@
     </script>
     <style>
         body { background-color: #fafafa; }
-        /* Remove scrollbar for clean look but keep functionality */
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #e4e4e7; border-radius: 2px; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
@@ -62,7 +60,7 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useCallback } = React;
 
-        // --- ICONS (Lucide) ---
+        // --- ICONS ---
         const Icon = ({ name, size = 16, className = "" }) => {
             useEffect(() => {
                 if (window.lucide) window.lucide.createIcons();
@@ -70,12 +68,11 @@
             return <i data-lucide={name} width={size} height={size} className={className}></i>;
         };
 
-        // --- DATA & LOGIC MODULE ---
-        
+        // --- DATA MODULE ---
         const STORAGE_KEY = 'nn_planner_config';
 
-        // Mapeamento fixo conforme specs
-        const FORM_MAP = {
+        // IDs do Form de Registros (Transações)
+        const FORM_RECORDS_MAP = {
             id: 'entry.1839248024',
             titulo: 'entry.1045175554',
             data_prevista: 'entry.760139310',
@@ -83,28 +80,28 @@
             valor: 'entry.1805224440',
             categoria: 'entry.1854217840',
             status: 'entry.1060678570',
-            deleted: 'entry.deleted_flag_placeholder' // Não tem no form original, gerenciado via status 'void'
         };
 
-        const PARAMS_MAP = {
+        // IDs do Form de Parâmetros (Config)
+        const FORM_PARAMS_MAP = {
             label: 'entry.1097139386',
             value: 'entry.1455409067'
         };
 
-        // CSV Parsing Helper
+        // CSV Parser Genérico
         const parseCSV = (text) => {
             const lines = text.split('\n').filter(l => l.trim() !== '');
+            if (lines.length === 0) return [];
+            
             const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
             
             return lines.slice(1).map(line => {
-                // Regex complexa para lidar com vírgulas dentro de aspas no CSV
+                // Regex para lidar com vírgulas dentro de aspas
                 const values = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
-                // Fallback simples se o regex falhar em linhas complexas
-                const splitValues = line.split(',');
+                const splitValues = line.split(','); // Fallback
                 
                 const entry = {};
                 headers.forEach((h, i) => {
-                    // Limpeza básica de aspas
                     let val = (values[i] || splitValues[i] || '').replace(/^"|"$/g, '').trim();
                     entry[h] = val;
                 });
@@ -112,52 +109,48 @@
             });
         };
 
-        // The "Reduce" Algorithm
-        const processRecords = (rawRecords) => {
-            // 1. Group by ID (timestamp)
+        // --- LOGIC: PROCESS RECORDS (Reduce Algorithm) ---
+        const processTransactions = (rawList) => {
             const groups = {};
-            rawRecords.forEach(r => {
-                // Tenta achar a coluna que corresponde ao ID (timestamp). 
-                // No Google Sheets, a primeira col é 'Carimbo de data/hora', mas usamos o campo ID salvo.
-                // Precisamos identificar qual coluna é o ID com base no mapeamento ou nome.
-                // Assumindo que no CSV o header do ID venha como mapeado ou 'registro_id'
-                // Procurando chaves comuns
-                const idKey = Object.keys(r).find(k => k.includes('id') || k.includes('1839248024')); 
+            
+            rawList.forEach(r => {
+                // Busca dinâmica de colunas baseada em palavras-chave se o header exato falhar
+                const keys = Object.keys(r);
+                const idKey = keys.find(k => k.includes('id') || k.includes('1839')); 
+                if (!idKey || !r[idKey]) return;
+                
                 const id = r[idKey];
-                
-                if (!id) return;
-                
                 if (!groups[id]) groups[id] = [];
                 groups[id].push(r);
             });
 
-            // 2. Reduce to Latest & 3. Filter Void
             const cleanList = [];
             
             Object.values(groups).forEach(group => {
-                // Ordena pelo Timestamp do Google (primeira coluna geralmente)
-                // Assumindo formato DD/MM/YYYY HH:mm:ss ou YYYY-MM-DD
-                const sorted = group.sort((a, b) => {
-                    const timeA = Object.values(a)[0]; // Carimbo data/hora
-                    const timeB = Object.values(b)[0];
-                    return new Date(timeA) - new Date(timeB);
+                // Sort by Timestamp (assumed 1st column usually)
+                group.sort((a, b) => {
+                    const tA = Object.values(a)[0]; 
+                    const tB = Object.values(b)[0];
+                    return new Date(tA) - new Date(tB);
                 });
                 
-                const latest = sorted[sorted.length - 1];
+                const latest = group[group.length - 1];
+                const keys = Object.keys(latest);
                 
-                // Mapear de volta para nomes amigáveis
-                // Precisamos encontrar as chaves corretas baseadas no header do CSV
-                // Hack: Vamos procurar valores nas colunas
+                // Mapping seguro
                 const mapped = {
-                    original_id: latest[Object.keys(latest).find(k => k.includes('id') || k.includes('1839248024'))],
-                    title: latest[Object.keys(latest).find(k => k.includes('titulo') || k.includes('1045175554'))] || 'Sem título',
-                    date_prev: latest[Object.keys(latest).find(k => k.includes('prevista') || k.includes('760139310'))],
-                    value: parseFloat((latest[Object.keys(latest).find(k => k.includes('valor') || k.includes('1805224440'))] || '0').replace(',', '.')),
-                    category: latest[Object.keys(latest).find(k => k.includes('categoria') || k.includes('1854217840'))],
-                    status: latest[Object.keys(latest).find(k => k.includes('status') || k.includes('1060678570'))],
-                    type: (latest[Object.keys(latest).find(k => k.includes('valor') || k.includes('1805224440'))] || '0') == 0 ? 'organizational' : 'financial'
+                    original_id: latest[keys.find(k => k.includes('id') || k.includes('1839'))],
+                    title: latest[keys.find(k => k.includes('titulo') || k.includes('1045'))] || 'Sem título',
+                    date_prev: latest[keys.find(k => k.includes('prevista') || k.includes('7601'))],
+                    value: parseFloat((latest[keys.find(k => k.includes('valor') || k.includes('1805'))] || '0').replace(',', '.')),
+                    category: latest[keys.find(k => k.includes('categoria') || k.includes('1854'))],
+                    status: latest[keys.find(k => k.includes('status') || k.includes('1060'))],
                 };
 
+                // Type Logic
+                mapped.type = mapped.value === 0 ? 'organizational' : 'financial';
+
+                // Filter deleted/void
                 if (mapped.status !== 'void' && mapped.status !== 'deleted') {
                     cleanList.push(mapped);
                 }
@@ -166,12 +159,38 @@
             return cleanList.sort((a, b) => new Date(a.date_prev) - new Date(b.date_prev));
         };
 
+        // --- LOGIC: PROCESS CONFIGS ---
+        const processConfigs = (rawList) => {
+            const groups = {};
+            // Agrupa por Label (Key)
+            rawList.forEach(r => {
+                const keys = Object.keys(r);
+                const labelKey = keys.find(k => k.includes('label') || k.includes('1097'));
+                if (!labelKey || !r[labelKey]) return;
+                
+                const label = r[labelKey];
+                if (!groups[label]) groups[label] = [];
+                groups[label].push(r);
+            });
+
+            const configMap = {};
+            Object.keys(groups).forEach(label => {
+                const group = groups[label];
+                // Última versão vence
+                const latest = group[group.length - 1];
+                const keys = Object.keys(latest);
+                const valKey = keys.find(k => k.includes('valor') || k.includes('1455'));
+                
+                configMap[label] = latest[valKey];
+            });
+            return configMap;
+        };
+
         const postToForm = async (url, dataMap) => {
             const formData = new URLSearchParams();
             for (const [key, value] of Object.entries(dataMap)) {
                 formData.append(key, value);
             }
-            
             try {
                 await fetch(url, {
                     method: 'POST',
@@ -181,20 +200,18 @@
                 });
                 return true;
             } catch (e) {
-                console.error("Erro no envio", e);
+                console.error("Erro envio form", e);
                 return false;
             }
         };
 
-        // --- COMPONENTS ---
+        // --- UI COMPONENTS ---
 
-        // Basic UI Elements
         const Button = ({ children, onClick, variant = 'primary', className = "", disabled=false }) => {
             const base = "font-mono text-xs uppercase tracking-widest transition-colors py-3 rounded-sm flex items-center justify-center gap-2";
             const styles = {
                 primary: "bg-zinc-900 text-white hover:bg-zinc-800",
                 secondary: "bg-white border border-zinc-200 text-zinc-900 hover:bg-zinc-50",
-                ghost: "text-zinc-500 hover:bg-zinc-100 rounded-full w-10 h-10 p-0"
             };
             return (
                 <button onClick={onClick} disabled={disabled} className={`${base} ${styles[variant]} ${className} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
@@ -216,56 +233,118 @@
             </div>
         );
 
-        // Views
+        // --- VIEWS ---
+
         const SetupView = ({ onComplete }) => {
-            const [links, setLinks] = useState({
+            const [step, setStep] = useState(1); // 1: Master Link, 2: Full Manual
+            const [masterLink, setMasterLink] = useState('');
+            const [fullConfig, setFullConfig] = useState({
                 form_params: '',
                 form_registros: '',
                 csv_registros: ''
             });
             const [loading, setLoading] = useState(false);
+            const [errorMsg, setErrorMsg] = useState('');
 
-            const handleSave = async () => {
+            const handleMasterSubmit = async () => {
                 setLoading(true);
-                // Validations
-                if (!links.form_params.includes('docs.google.com/forms') || 
-                    !links.csv_registros.includes('output=csv')) {
-                    alert("Links inválidos. Verifique os formatos.");
+                setErrorMsg('');
+                
+                if (!masterLink.includes('docs.google.com') || !masterLink.includes('output=csv')) {
+                    setErrorMsg("Link CSV inválido. Certifique-se que termina com output=csv");
                     setLoading(false);
                     return;
                 }
 
-                // 1. Save Local
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(links));
+                try {
+                    // Tenta baixar o CSV Mestre
+                    const res = await fetch(masterLink);
+                    const text = await res.text();
+                    const raw = parseCSV(text);
+                    const configs = processConfigs(raw); // "Reduce" nos params
 
-                // 2. First Run Action: Save config to Params Form (Crypto mock)
-                const configPayload = JSON.stringify(links); 
-                // In real app, encrypt here. Sending raw for prototype simplicity.
+                    if (configs['app_config_backup']) {
+                        // BINGO! Configuração encontrada
+                        try {
+                            const restored = JSON.parse(configs['app_config_backup']);
+                            // Garante que o csv_parametros salvo é o que foi usado agora
+                            restored.csv_parametros = masterLink; 
+                            
+                            localStorage.setItem(STORAGE_KEY, JSON.stringify(restored));
+                            onComplete(restored);
+                            return;
+                        } catch (e) {
+                            console.error("Erro parse JSON config", e);
+                        }
+                    } 
+                    
+                    // Se chegou aqui, não achou config válida. Vai pro passo 2
+                    // Mas preserva o link do master csv como 'csv_parametros' (que não usamos pra escrita, mas pra leitura futura)
+                    // Na verdade precisamos do FORM Parametros para escrever.
+                    setErrorMsg("Configuração não encontrada neste CSV. Preencha os dados para inicializar.");
+                    setStep(2);
+                    
+                } catch (e) {
+                    setErrorMsg("Erro ao ler CSV. Verifique permissões ou link.");
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleFullSave = async () => {
+                setLoading(true);
+                // Salva Local
+                const configToSave = { ...fullConfig, csv_parametros: masterLink }; // Opcional guardar o master link de leitura
                 
-                await postToForm(links.form_params, {
-                    [PARAMS_MAP.label]: 'app_config_backup',
-                    [PARAMS_MAP.value]: configPayload
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(configToSave));
+
+                // Escreve no CSV Mestre (via Form Params) para futuro
+                const configPayload = JSON.stringify(configToSave);
+                await postToForm(fullConfig.form_params, {
+                    [FORM_PARAMS_MAP.label]: 'app_config_backup',
+                    [FORM_PARAMS_MAP.value]: configPayload
                 });
 
                 setLoading(false);
-                onComplete(links);
+                onComplete(configToSave);
             };
 
             return (
                 <div className="min-h-screen flex flex-col items-center justify-center p-6 max-w-md mx-auto">
                     <div className="mb-8 text-center">
                         <h1 className="text-xl font-bold tracking-tight mb-2">NN Planner</h1>
-                        <p className="text-zinc-500 text-sm">Configuração Inicial</p>
+                        <p className="text-zinc-500 text-sm">Acesso ao Sistema</p>
                     </div>
                     
-                    <div className="w-full bg-white p-6 border border-zinc-200 rounded-sm shadow-sm">
-                        <Input label="Link Form Parâmetros" value={links.form_params} onChange={v => setLinks({...links, form_params: v})} placeholder="https://docs.google.com/forms..." />
-                        <Input label="Link Form Registros" value={links.form_registros} onChange={v => setLinks({...links, form_registros: v})} placeholder="https://docs.google.com/forms..." />
-                        <Input label="Link CSV Registros" value={links.csv_registros} onChange={v => setLinks({...links, csv_registros: v})} placeholder="https://docs.google.com/spreadsheets..." />
-                        
-                        <Button onClick={handleSave} disabled={loading} className="w-full mt-4">
-                            {loading ? "Conectando..." : "Conectar Infraestrutura"}
-                        </Button>
+                    <div className="w-full bg-white p-6 border border-zinc-200 rounded-sm shadow-sm animate-in fade-in slide-in-from-bottom-4">
+                        {step === 1 && (
+                            <>
+                                <Input 
+                                    label="Link CSV Parâmetros (Master)" 
+                                    value={masterLink} 
+                                    onChange={setMasterLink} 
+                                    placeholder="https://docs.google.com/...output=csv" 
+                                />
+                                {errorMsg && <p className="text-xs text-red-500 mb-4 font-mono">{errorMsg}</p>}
+                                <Button onClick={handleMasterSubmit} disabled={loading} className="w-full">
+                                    {loading ? "Buscando Configuração..." : "Carregar"}
+                                </Button>
+                            </>
+                        )}
+
+                        {step === 2 && (
+                            <div className="animate-in fade-in">
+                                <p className="text-xs text-zinc-500 mb-4">Primeiro acesso detectado. Informe os links de escrita.</p>
+                                <Input label="Link Form Parâmetros (Escrita)" value={fullConfig.form_params} onChange={v => setFullConfig({...fullConfig, form_params: v})} />
+                                <Input label="Link Form Registros (Escrita)" value={fullConfig.form_registros} onChange={v => setFullConfig({...fullConfig, form_registros: v})} />
+                                <Input label="Link CSV Registros (Leitura)" value={fullConfig.csv_registros} onChange={v => setFullConfig({...fullConfig, csv_registros: v})} />
+                                
+                                <Button onClick={handleFullSave} disabled={loading} className="w-full mt-2">
+                                    {loading ? "Inicializando..." : "Salvar e Conectar"}
+                                </Button>
+                                <button onClick={() => setStep(1)} className="w-full text-center mt-4 text-[10px] uppercase text-zinc-400 hover:text-zinc-900">Voltar</button>
+                            </div>
+                        )}
                     </div>
                     <p className="mt-8 text-[10px] text-zinc-400 font-mono uppercase tracking-widest">Ton Alexandre System</p>
                 </div>
@@ -276,8 +355,18 @@
             const todayStr = new Date().toISOString().split('T')[0];
             
             const stats = useMemo(() => {
-                const currentMonth = new Date().getMonth();
-                const monthly = records.filter(r => new Date(r.date_prev).getMonth() === currentMonth && r.status !== 'void');
+                const now = new Date();
+                const currentMonth = now.getMonth();
+                const currentYear = now.getFullYear();
+                
+                // Filtra mês atual
+                const monthly = records.filter(r => {
+                    if (r.status === 'void') return false;
+                    const d = new Date(r.date_prev);
+                    // Ajuste de fuso simples: considera string YYYY-MM-DD
+                    const [y, m] = r.date_prev.split('-');
+                    return parseInt(m) === currentMonth + 1 && parseInt(y) === currentYear;
+                });
                 
                 const income = monthly.filter(r => r.value > 0).reduce((acc, r) => acc + r.value, 0);
                 const expenses = monthly.filter(r => r.value < 0).reduce((acc, r) => acc + r.value, 0);
@@ -285,11 +374,10 @@
                 return { income, expenses, balance: income + expenses };
             }, [records]);
 
-            const todayList = records.filter(r => r.date_prev === todayStr && r.status !== 'completed' && r.status !== 'paid');
+            const todayList = records.filter(r => r.date_prev === todayStr && r.status !== 'completed' && r.status !== 'paid' && r.status !== 'void');
 
             return (
                 <div className="space-y-8 animate-in fade-in duration-500">
-                    {/* KPI Cards */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="bg-white p-4 border border-zinc-200 rounded-sm">
                             <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-mono">Saldo Mês</span>
@@ -305,7 +393,6 @@
                         </div>
                     </div>
 
-                    {/* Today List */}
                     <div>
                         <div className="flex items-center justify-between mb-4 border-b border-zinc-100 pb-2">
                             <h3 className="font-mono text-xs uppercase tracking-widest text-zinc-400">Hoje</h3>
@@ -313,7 +400,7 @@
                         </div>
                         
                         {todayList.length === 0 ? (
-                            <p className="text-sm text-zinc-400 italic">Nada planejado para hoje.</p>
+                            <p className="text-sm text-zinc-400 italic">Nada pendente para hoje.</p>
                         ) : (
                             <div className="space-y-3">
                                 {todayList.map((item, i) => (
@@ -337,7 +424,6 @@
         };
 
         const ListView = ({ records, typeFilter }) => {
-            // typeFilter: 'all', 'financial', 'organizational'
             const filtered = records.filter(r => {
                 if (typeFilter === 'all') return true;
                 return r.type === typeFilter;
@@ -351,6 +437,8 @@
                         </h2>
                         <button className="text-zinc-400 hover:text-zinc-900"><Icon name="filter" /></button>
                     </div>
+
+                    {filtered.length === 0 && <p className="text-sm text-zinc-400 text-center py-8">Nenhum registro encontrado.</p>}
 
                     {filtered.map((item, i) => (
                         <div key={i} className="bg-white p-4 border border-zinc-200 rounded-sm flex justify-between items-center">
@@ -371,7 +459,7 @@
                             </div>
                         </div>
                     ))}
-                    <div className="h-20"></div> {/* Spacer for FAB */}
+                    <div className="h-20"></div>
                 </div>
             );
         };
@@ -382,36 +470,38 @@
                 value: '',
                 date: new Date().toISOString().split('T')[0],
                 category: 'Geral',
-                type: 'financial' // financial or organizational
+                type: 'financial'
             });
             const [saving, setSaving] = useState(false);
 
             if (!isOpen) return null;
 
             const handleSubmit = async () => {
+                if (!config || !config.form_registros) {
+                    alert("Erro de configuração: Link de Form de Registros não encontrado.");
+                    return;
+                }
                 setSaving(true);
                 const id = Date.now().toString();
                 const finalValue = formData.type === 'organizational' ? 0 : parseFloat(formData.value || 0);
                 
-                // Mapeamento para envio
                 const payload = {
-                    [FORM_MAP.id]: id,
-                    [FORM_MAP.titulo]: formData.title,
-                    [FORM_MAP.data_prevista]: formData.date,
-                    [FORM_MAP.valor]: finalValue,
-                    [FORM_MAP.categoria]: formData.category,
-                    [FORM_MAP.status]: 'pending',
-                    // Campos extras vazios
-                    [FORM_MAP.data_realizada]: '', 
+                    [FORM_RECORDS_MAP.id]: id,
+                    [FORM_RECORDS_MAP.titulo]: formData.title,
+                    [FORM_RECORDS_MAP.data_prevista]: formData.date,
+                    [FORM_RECORDS_MAP.valor]: finalValue,
+                    [FORM_RECORDS_MAP.categoria]: formData.category,
+                    [FORM_RECORDS_MAP.status]: 'pending',
+                    [FORM_RECORDS_MAP.data_realizada]: '', 
                 };
 
                 const success = await postToForm(config.form_registros, payload);
                 setSaving(false);
                 if (success) {
-                    alert("Salvo com sucesso (Append-only). Atualize em instantes.");
+                    alert("Registro salvo. A atualização aparecerá em breve.");
                     onClose();
                 } else {
-                    alert("Erro ao salvar.");
+                    alert("Erro ao enviar para o Google Forms.");
                 }
             };
 
@@ -438,13 +528,13 @@
                             </button>
                         </div>
 
-                        <Input label="Título" value={formData.title} onChange={v => setFormData({...formData, title: v})} placeholder="Ex: Mercado" />
+                        <Input label="Título" value={formData.title} onChange={v => setFormData({...formData, title: v})} placeholder="Título..." />
                         
                         {formData.type === 'financial' && (
-                             <Input label="Valor (Use - para despesa)" type="number" value={formData.value} onChange={v => setFormData({...formData, value: v})} placeholder="-50.00" />
+                             <Input label="Valor (Use - para despesa)" type="number" value={formData.value} onChange={v => setFormData({...formData, value: v})} placeholder="-0.00" />
                         )}
 
-                        <Input label="Data" type="date" value={formData.date} onChange={v => setFormData({...formData, date: v})} />
+                        <Input label="Data Prevista" type="date" value={formData.date} onChange={v => setFormData({...formData, date: v})} />
                         
                         <div className="mb-6">
                              <label className="text-[10px] uppercase tracking-wider font-mono text-zinc-400 mb-1 block">Categoria</label>
@@ -459,69 +549,49 @@
                                 <option>Lazer</option>
                                 <option>Filho</option>
                                 <option>Transporte</option>
+                                <option>Receita</option>
                              </select>
                         </div>
 
                         <Button onClick={handleSubmit} disabled={saving} className="w-full">
-                            {saving ? "Registrando..." : "Confirmar"}
+                            {saving ? "Salvando..." : "Confirmar"}
                         </Button>
                     </div>
                 </div>
             );
         };
 
-        // Layout Shell
         const Layout = ({ children, activeTab, onTabChange, onAdd }) => {
             return (
                 <div className="min-h-screen bg-zinc-50 pb-24">
-                    {/* Header */}
                     <header className="fixed top-0 left-0 right-0 z-40 bg-zinc-50/90 backdrop-blur-sm border-b border-zinc-200 h-14 flex items-center justify-between px-6">
                         <span className="font-sans font-semibold text-sm tracking-tight text-zinc-900">NN Planner</span>
                         <span className="font-mono text-[10px] text-zinc-300 uppercase tracking-widest hidden sm:block">Ton Alexandre</span>
                     </header>
-
-                    {/* Main Content */}
                     <main className="pt-20 px-6 max-w-md mx-auto">
                         {children}
                     </main>
-
-                    {/* FAB */}
-                    <button 
-                        onClick={onAdd}
-                        className="fixed bottom-20 right-6 w-12 h-12 bg-zinc-900 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-black transition-transform active:scale-95 z-40"
-                    >
+                    <button onClick={onAdd} className="fixed bottom-20 right-6 w-12 h-12 bg-zinc-900 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-black transition-transform active:scale-95 z-40">
                         <Icon name="plus" />
                     </button>
-
-                    {/* Bottom Nav */}
                     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-zinc-200 h-16 flex items-center justify-around px-6 z-40 pb-safe">
-                        <button onClick={() => onTabChange('dash')} className={`p-2 rounded-full ${activeTab === 'dash' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400'}`}>
-                            <Icon name="layout-dashboard" />
-                        </button>
-                        <button onClick={() => onTabChange('fin')} className={`p-2 rounded-full ${activeTab === 'fin' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400'}`}>
-                            <Icon name="wallet" />
-                        </button>
-                         <button onClick={() => onTabChange('org')} className={`p-2 rounded-full ${activeTab === 'org' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400'}`}>
-                            <Icon name="check-square" />
-                        </button>
-                        <button onClick={() => onTabChange('settings')} className={`p-2 rounded-full ${activeTab === 'settings' ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400'}`}>
-                            <Icon name="settings" />
-                        </button>
+                        {['dash', 'fin', 'org', 'settings'].map(tab => (
+                            <button key={tab} onClick={() => onTabChange(tab)} className={`p-2 rounded-full ${activeTab === tab ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400'}`}>
+                                <Icon name={tab === 'dash' ? 'layout-dashboard' : tab === 'fin' ? 'wallet' : tab === 'org' ? 'check-square' : 'settings'} />
+                            </button>
+                        ))}
                     </nav>
                 </div>
             );
         };
 
-        // --- MAIN APP ---
-
         const App = () => {
             const [config, setConfig] = useState(null);
             const [records, setRecords] = useState([]);
-            const [view, setView] = useState('dash'); // dash, fin, org, settings
+            const [view, setView] = useState('dash');
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [loadingData, setLoadingData] = useState(false);
 
-            // 1. Boot Sequence
             useEffect(() => {
                 const stored = localStorage.getItem(STORAGE_KEY);
                 if (stored) {
@@ -532,16 +602,16 @@
             }, []);
 
             const fetchData = async (url) => {
+                if (!url) return;
                 setLoadingData(true);
                 try {
                     const res = await fetch(url);
                     const text = await res.text();
                     const raw = parseCSV(text);
-                    const processed = processRecords(raw);
+                    const processed = processTransactions(raw);
                     setRecords(processed);
                 } catch (err) {
-                    console.error("Erro fetch csv", err);
-                    // alert("Erro ao carregar dados. Verifique sua conexão ou o link CSV.");
+                    console.error("Erro fetch records", err);
                 } finally {
                     setLoadingData(false);
                 }
@@ -552,13 +622,10 @@
                 fetchData(newConfig.csv_registros);
             };
 
-            const handleRefresh = () => {
-                if(config) fetchData(config.csv_registros);
-            }
+            const handleRefresh = () => { if(config) fetchData(config.csv_registros); }
+            const handleReset = () => { localStorage.removeItem(STORAGE_KEY); setConfig(null); }
 
-            if (!config) {
-                return <SetupView onComplete={handleSetupComplete} />;
-            }
+            if (!config) return <SetupView onComplete={handleSetupComplete} />;
 
             return (
                 <>
@@ -566,43 +633,28 @@
                     {view === 'dash' && <Dashboard records={records} />}
                     {view === 'fin' && <ListView records={records} typeFilter="financial" />}
                     {view === 'org' && <ListView records={records} typeFilter="organizational" />}
-                    
                     {view === 'settings' && (
-                        <div className="space-y-4">
+                        <div className="space-y-4 animate-in fade-in">
                             <h2 className="text-lg font-light mb-4">Configurações</h2>
                             <div className="p-4 bg-white border border-zinc-200 rounded-sm">
                                 <p className="text-xs font-mono text-zinc-400 mb-2">INFRAESTRUTURA</p>
-                                <p className="text-xs truncate text-zinc-600 mb-4">{config.csv_registros}</p>
-                                <Button variant="secondary" onClick={() => {
-                                    localStorage.removeItem(STORAGE_KEY);
-                                    setConfig(null);
-                                }} className="w-full">
-                                    Desconectar / Resetar
-                                </Button>
+                                <p className="text-[10px] text-zinc-500 break-all mb-4">{config.csv_registros}</p>
+                                <Button variant="secondary" onClick={handleReset} className="w-full">Desconectar</Button>
                             </div>
                             <Button variant="secondary" onClick={handleRefresh} className="w-full">
-                                {loadingData ? "Atualizando..." : "Forçar Atualização de Dados"}
+                                {loadingData ? "Atualizando..." : "Forçar Atualização"}
                             </Button>
                         </div>
                     )}
                 </Layout>
-
-                <NewRecordModal 
-                    isOpen={isModalOpen} 
-                    onClose={() => setIsModalOpen(false)} 
-                    config={config}
-                />
+                <NewRecordModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} config={config} />
                 </>
             );
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
-        
-        // Ativar ícones após renderização inicial
-        setTimeout(() => {
-            if (window.lucide) window.lucide.createIcons();
-        }, 100);
+        setTimeout(() => { if (window.lucide) window.lucide.createIcons(); }, 100);
     </script>
 </body>
 </html>
